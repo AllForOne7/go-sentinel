@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -136,10 +137,32 @@ func subscribeToMetrics(js nats.JetStreamContext, db storage.Storage) *nats.Subs
 		}
 		msg.Ack()
 	}, nats.Durable("processor"), nats.DeliverNew())
-
 	if err != nil {
-		slog.Error("ошибка подписки на метрики", "err", err)
-		os.Exit(1)
+		// Если consumer уже существует с другим конфигом — удаляем и создаём заново
+		if strings.Contains(err.Error(), "consumer name already in use") || strings.Contains(err.Error(), "already exists") {
+			slog.Warn("consumer 'processor' уже существует, удаляем и пересоздаём...")
+			_ = js.DeleteConsumer("METRICS", "processor")
+			sub, err = js.Subscribe("metrics.>", func(msg *nats.Msg) {
+				var e models.MetricEvent
+				if err := json.Unmarshal(msg.Data, &e); err != nil {
+					slog.Error("ошибка парсинга метрики", "err", err)
+					msg.Ack()
+					return
+				}
+				if err := db.Save(context.Background(), e); err != nil {
+					slog.Error("ошибка сохранения метрики", "host", e.Host, "err", err)
+				}
+				msg.Ack()
+			}, nats.Durable("processor"), nats.DeliverNew())
+			if err != nil {
+				slog.Error("не удалось создать подписку после пересоздания", "err", err)
+				os.Exit(1)
+			}
+			slog.Info("подписка processor пересоздана")
+		} else {
+			slog.Error("ошибка подписки на metrics", "err", err)
+			os.Exit(1)
+		}
 	}
 	return sub
 }

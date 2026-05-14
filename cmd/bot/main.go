@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -25,19 +26,18 @@ import (
 	"sentinel/internal/storage"
 )
 
-// Константы для предотвращения дублирования строк (замечание линтера)
 const (
-	cmdStatus   = "status:"
-	cmdMute     = "mute:"
-	cmdUnmute   = "unmute:"
-	cmdAlerts   = "alerts"
-	modeHTML    = "HTML"
-	defaultNats = "nats://localhost:4222"
+	cmdStatus = "status:"
+	cmdMute   = "mute:"
+	cmdUnmute = "unmute:"
+	cmdAlerts = "alerts"
+	cmdTop    = "top:"
+	cmdKill   = "kill:"
+	modeHTML  = "HTML"
 )
 
 var store = hostcache.New()
 
-// muteStore — потокобезопасный кэш заглушённых хостов с персистентностью через БД.
 type muteStore struct {
 	mu    sync.RWMutex
 	cache map[string]time.Time
@@ -86,8 +86,6 @@ func (m *muteStore) isMuted(host string) bool {
 }
 
 var mutes *muteStore
-
-// --- Функции форматирования (UI) ---
 
 func colorEmoji(value, warn, danger float64) string {
 	if value >= danger {
@@ -155,17 +153,12 @@ func hostStatusButtons(host string, isMuted bool) tgbotapi.InlineKeyboardMarkup 
 	)
 }
 
-// --- Инициализация компонентов ---
-
-// Изменяем *os.File на io.Closer
 func setupLogs() io.Closer {
 	logDir := os.Getenv("LOG_DIR")
 	if logDir == "" {
 		logDir = "logs"
 	}
 	os.MkdirAll(logDir, 0755)
-
-	// logger.Init возвращает (io.Closer, error)
 	logFile, err := logger.Init(filepath.Join(logDir, "bot.log"))
 	if err != nil {
 		slog.Error("ошибка инициализации логов", "err", err)
@@ -196,42 +189,118 @@ func setupDatabase() storage.Storage {
 func setupNats() *nats.Conn {
 	natsURL := os.Getenv("NATS_URL")
 	if natsURL == "" {
-		natsURL = defaultNats
+		natsURL = "nats://localhost:4222"
 	}
-	nc, err := nats.Connect(natsURL)
+	slog.Info("подключение к NATS", "url", natsURL)
+	nc, err := nats.Connect(natsURL,
+		nats.MaxReconnects(-1),
+		nats.ReconnectWait(5*time.Second),
+		nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
+			slog.Warn("NATS отключился", "err", err)
+		}),
+		nats.ReconnectHandler(func(nc *nats.Conn) {
+			slog.Info("NATS переподключился", "url", nc.ConnectedUrl())
+		}),
+	)
 	if err != nil {
-		slog.Error("ошибка NATS", "err", err)
+		slog.Error("ошибка подключения к NATS", "url", natsURL, "err", err)
 		os.Exit(1)
 	}
-	js, _ := nc.JetStream()
-	js.Subscribe("metrics.>", func(msg *nats.Msg) {
+	slog.Info("подключился к NATS", "url", natsURL)
+
+	js, err := nc.JetStream()
+	if err != nil {
+		slog.Error("ошибка JetStream", "err", err)
+		os.Exit(1)
+	}
+
+	_, err = js.AddStream(&nats.StreamConfig{
+		Name:     "METRICS",
+		Subjects: []string{"metrics.>"},
+		MaxAge:   24 * time.Hour,
+	})
+	if err != nil && !strings.Contains(err.Error(), "stream already exists") {
+		slog.Error("ошибка создания стрима METRICS", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("стрим METRICS готов")
+
+	_, err = js.Subscribe("metrics.>", func(msg *nats.Msg) {
 		var e models.MetricEvent
-		if err := json.Unmarshal(msg.Data, &e); err == nil {
-			store.Set(e)
+		if err := json.Unmarshal(msg.Data, &e); err != nil {
+			slog.Error("ошибка парсинга метрики", "err", err)
+			msg.Ack()
+			return
 		}
+		store.Set(e)
+		slog.Debug("метрика сохранена в кэш", "host", e.Host, "cpu", e.CPU)
 		msg.Ack()
 	}, nats.Durable("bot"), nats.DeliverNew())
+	if err != nil {
+		if strings.Contains(err.Error(), "consumer name already in use") || strings.Contains(err.Error(), "already exists") {
+			slog.Warn("consumer 'bot' уже существует, удаляем и пересоздаём...")
+			_ = js.DeleteConsumer("METRICS", "bot")
+			_, err2 := js.Subscribe("metrics.>", func(msg *nats.Msg) {
+				var e models.MetricEvent
+				if err := json.Unmarshal(msg.Data, &e); err != nil {
+					slog.Error("ошибка парсинга метрики", "err", err)
+					msg.Ack()
+					return
+				}
+				store.Set(e)
+				msg.Ack()
+			}, nats.Durable("bot"), nats.DeliverNew())
+			if err2 != nil {
+				slog.Error("не удалось создать подписку после пересоздания", "err", err2)
+				os.Exit(1)
+			}
+			slog.Info("подписка на metrics пересоздана")
+		} else {
+			slog.Error("ошибка подписки на metrics", "err", err)
+			os.Exit(1)
+		}
+	}
+	slog.Info("подписка на metrics создана")
 	return nc
 }
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("PANIC в main", "err", r)
+			buf := make([]byte, 4096)
+			n := runtime.Stack(buf, false)
+			slog.Error("stack: " + string(buf[:n]))
+		}
+	}()
+
 	godotenv.Load()
+	slog.Info("загрузка .env завершена")
+
 	logFile := setupLogs()
 	defer logFile.Close()
+	slog.Info("логи инициализированы")
 
 	db := setupDatabase()
 	defer db.Close()
+	slog.Info("БД подключена")
+
 	mutes = newMuteStore(db)
+	slog.Info("muteStore инициализирован")
+
+	store = hostcache.New()
+	slog.Info("store инициализирован", "store_ptr", fmt.Sprintf("%p", store))
 
 	nc := setupNats()
 	defer nc.Close()
+	slog.Info("NATS подключен")
 
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_TOKEN"))
 	if err != nil {
 		slog.Error("ошибка создания бота", "err", err)
 		return
 	}
-	slog.Info("бот запущен", "username", bot.Self.UserName)
+	slog.Info("бот создан", "username", bot.Self.UserName)
 
 	allowedIDs := parseAllowedIDs()
 
@@ -239,7 +308,6 @@ func main() {
 	u.Timeout = 60
 	updates := bot.GetUpdatesChan(u)
 
-	// Основной цикл обработки событий
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
@@ -247,11 +315,11 @@ func main() {
 		select {
 		case update := <-updates:
 			if update.CallbackQuery != nil {
-				handleCallback(bot, update.CallbackQuery, db, allowedIDs)
+				handleCallback(bot, update.CallbackQuery, db, nc, allowedIDs)
 				continue
 			}
 			if update.Message != nil {
-				handleMessage(bot, update, db, allowedIDs)
+				handleMessage(bot, update, db, nc, allowedIDs)
 			}
 		case <-quit:
 			slog.Info("бот останавливается...")
@@ -273,11 +341,9 @@ func parseAllowedIDs() map[int64]bool {
 	return allowed
 }
 
-// --- Хендлеры сообщений и команд ---
-
-func handleMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, db storage.Storage, allowed map[int64]bool) {
+func handleMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, db storage.Storage, nc *nats.Conn, allowedIDs map[int64]bool) {
 	chatID := update.Message.Chat.ID
-	if len(allowed) > 0 && !allowed[chatID] {
+	if len(allowedIDs) > 0 && !allowedIDs[chatID] {
 		bot.Send(tgbotapi.NewMessage(chatID, "⛔ Доступ запрещён"))
 		return
 	}
@@ -296,16 +362,29 @@ func handleMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, db storage.Stor
 		parts := strings.Fields(text)
 		if len(parts) >= 2 {
 			handleStatus(bot, chatID, parts[1])
+		} else {
+			bot.Send(tgbotapi.NewMessage(chatID, "⚠️ Вкажіть ім'я хоста.\nПриклад: `/status my-pc`"))
 		}
 	case strings.HasPrefix(text, "/speedtest"):
 		parts := strings.Fields(text)
 		if len(parts) >= 2 {
 			handleSpeedtest(bot, chatID, parts[1], db)
+		} else {
+			bot.Send(tgbotapi.NewMessage(chatID, "⚠️ Вкажіть ім'я хоста.\nПриклад: `/speedtest my-pc`"))
 		}
 	case strings.HasPrefix(text, "/mute"):
 		parts := strings.Fields(text)
 		if len(parts) >= 3 {
 			handleMute(bot, chatID, parts[1], parts[2])
+		} else {
+			bot.Send(tgbotapi.NewMessage(chatID, "⚠️ Вкажіть хост та час у хвилинах.\nПриклад: `/mute my-pc 30`"))
+		}
+	case strings.HasPrefix(text, "/top"):
+		parts := strings.Fields(text)
+		if len(parts) >= 2 {
+			handleTop(bot, chatID, parts[1], nc)
+		} else {
+			bot.Send(tgbotapi.NewMessage(chatID, "⚠️ Вкажіть ім'я хоста.\nПриклад: `/top my-pc`"))
 		}
 	}
 }
@@ -316,11 +395,11 @@ func handleHelp(bot *tgbotapi.BotAPI, chatID int64) {
 <b>Команды:</b>
 /hosts — список всех хостов
 /status &lt;хост&gt; — метрики хоста
+/top &lt;хост&gt; — список топ процессов
 /alerts — активные инциденты
 /speedtest &lt;хост&gt; — последний speedtest
 /mute &lt;хост&gt; &lt;минуты&gt; — заглушить алерты
 /help — эта справка`
-
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = modeHTML
 	bot.Send(msg)
@@ -444,28 +523,92 @@ func handleMute(bot *tgbotapi.BotAPI, chatID int64, host, minStr string) {
 	bot.Send(msg)
 }
 
-func handleCallback(bot *tgbotapi.BotAPI, cb *tgbotapi.CallbackQuery, db storage.Storage, allowed map[int64]bool) {
+func handleTop(bot *tgbotapi.BotAPI, chatID int64, host string, nc *nats.Conn) {
+	e, ok := store.Get(host)
+	if !ok {
+		bot.Send(tgbotapi.NewMessage(chatID, "Хост <b>"+host+"</b> не найден"))
+		return
+	}
+
+	if len(e.TopProcesses) == 0 {
+		bot.Send(tgbotapi.NewMessage(chatID, "Нет данных о процессах для "+host))
+		return
+	}
+
+	text := fmt.Sprintf("📋 <b>Топ процессы на %s</b>\n\n", host)
+	var rows [][]tgbotapi.InlineKeyboardButton
+
+	for _, p := range e.TopProcesses {
+		text += fmt.Sprintf("<code>%5d</code> | %-20s | CPU: %5.1f%% | RAM: %5.1fMB\n",
+			p.PID, p.Name, p.CPUPct, p.MemMB)
+
+		killData := fmt.Sprintf("%s%s:%d", cmdKill, host, p.PID)
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("❌ Kill %d", p.PID), killData),
+		))
+	}
+
+	msg := tgbotapi.NewMessage(chatID, text)
+	msg.ParseMode = modeHTML
+	if len(rows) > 0 {
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
+	}
+	bot.Send(msg)
+}
+
+func handleKill(bot *tgbotapi.BotAPI, cb *tgbotapi.CallbackQuery, host string, pidStr string, nc *nats.Conn) {
+	pid, err := strconv.Atoi(pidStr)
+	if err != nil {
+		bot.Request(tgbotapi.NewCallback(cb.ID, "Неверный PID"))
+		return
+	}
+
+	cmd := map[string]interface{}{
+		"action": "KILL",
+		"pid":    pid,
+	}
+	data, _ := json.Marshal(cmd)
+	topic := fmt.Sprintf("commands.%s", host)
+
+	if err := nc.Publish(topic, data); err != nil {
+		slog.Error("ошибка отправки команды KILL", "err", err)
+		bot.Request(tgbotapi.NewCallback(cb.ID, "Ошибка отправки команды"))
+		return
+	}
+
+	bot.Request(tgbotapi.NewCallback(cb.ID, fmt.Sprintf("Команду на завершение процесу [%d] відправлено на %s", pid, host)))
+}
+
+func handleCallback(bot *tgbotapi.BotAPI, cb *tgbotapi.CallbackQuery, db storage.Storage, nc *nats.Conn, allowedIDs map[int64]bool) {
 	chatID := cb.Message.Chat.ID
-	if len(allowed) > 0 && !allowed[chatID] {
+	if len(allowedIDs) > 0 && !allowedIDs[chatID] {
 		return
 	}
 
 	data := cb.Data
-	bot.Send(tgbotapi.NewCallback(cb.ID, ""))
 
 	switch {
 	case strings.HasPrefix(data, cmdStatus):
+		bot.Send(tgbotapi.NewCallback(cb.ID, ""))
 		handleStatus(bot, chatID, strings.TrimPrefix(data, cmdStatus))
 	case strings.HasPrefix(data, cmdMute):
+		bot.Send(tgbotapi.NewCallback(cb.ID, ""))
 		parts := strings.Split(data, ":")
 		if len(parts) == 3 {
 			handleMute(bot, chatID, parts[1], parts[2])
 		}
 	case strings.HasPrefix(data, cmdUnmute):
+		bot.Send(tgbotapi.NewCallback(cb.ID, ""))
 		host := strings.TrimPrefix(data, cmdUnmute)
 		mutes.unmute(host)
 		bot.Send(tgbotapi.NewMessage(chatID, "🔔 Алерты для <b>"+host+"</b> включены"))
 	case data == cmdAlerts:
+		bot.Send(tgbotapi.NewCallback(cb.ID, ""))
 		handleAlerts(bot, chatID, db)
+	case strings.HasPrefix(data, cmdKill):
+		parts := strings.Split(data, ":")
+		if len(parts) == 3 {
+			handleKill(bot, cb, parts[1], parts[2], nc)
+		}
 	}
 }

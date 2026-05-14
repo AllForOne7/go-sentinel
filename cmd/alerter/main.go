@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -366,8 +367,39 @@ func main() {
 		msg.Ack()
 	}, nats.Durable("alerter"), nats.DeliverNew())
 	if err != nil {
-		slog.Error("ошибка подписки на метрики", "err", err)
-		return
+		// Если consumer уже существует с другим конфигом — удаляем и создаём заново
+		if strings.Contains(err.Error(), "consumer name already in use") || strings.Contains(err.Error(), "already exists") {
+			slog.Warn("consumer 'alerter' уже существует, удаляем и пересоздаём...")
+			_ = js.DeleteConsumer("METRICS", "alerter")
+			sub, err = js.Subscribe("metrics.>", func(msg *nats.Msg) {
+				var e models.MetricEvent
+				if err := json.Unmarshal(msg.Data, &e); err != nil {
+					slog.Error("ошибка парсинга метрики", "err", err)
+					msg.Ack()
+					return
+				}
+				slog.Info("метрика получена",
+					"host", e.Host,
+					"cpu", math.Round(e.CPU*10)/10,
+					"ram", math.Round(e.RAMUsed*10)/10,
+					"disk", math.Round(e.DiskUsed*10)/10,
+				)
+				rulesMu.RLock()
+				r := make([]models.Rule, len(rules))
+				copy(r, rules)
+				rulesMu.RUnlock()
+				check(e, token, chatID, r, db)
+				msg.Ack()
+			}, nats.Durable("alerter"), nats.DeliverNew())
+			if err != nil {
+				slog.Error("не удалось создать подписку после пересоздания", "err", err)
+				os.Exit(1)
+			}
+			slog.Info("подписка alerter пересоздана")
+		} else {
+			slog.Error("ошибка подписки на metrics", "err", err)
+			os.Exit(1)
+		}
 	}
 	slog.Info("подписка на метрики создана")
 

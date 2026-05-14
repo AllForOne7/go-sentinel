@@ -852,18 +852,19 @@
     <!-- Top Processes -->
     <div class="procs-box" id="procs-box" style="display:none">
       <h3>🔥 Тяжёлые процессы</h3>
-      <table class="procs-table">
-        <thead>
-          <tr>
-            <th>PID</th>
-            <th>Процесс</th>
-            <th>CPU %</th>
-            <th>RAM MB</th>
-            <th>RAM %</th>
-          </tr>
-        </thead>
-        <tbody id="procs-body"></tbody>
-      </table>
+<table class="procs-table">
+         <thead>
+           <tr>
+             <th>PID</th>
+             <th>Процесс</th>
+             <th>CPU %</th>
+             <th>RAM MB</th>
+             <th>RAM %</th>
+             <th>Действие</th>
+           </tr>
+         </thead>
+         <tbody id="procs-body"></tbody>
+       </table>
     </div>
 
     <!-- Charts -->
@@ -949,6 +950,15 @@ let isLive = false;
 let activeHost = null;
 let allHosts = {};
 let currentHistoryHours = 1;
+
+// ─── Safe number formatting ───
+function safeToFixed(value, digits) {
+  if (value == null || typeof value !== 'number' || isNaN(value)) {
+    return '—';
+  }
+  return value.toFixed(digits);
+}
+
 // ─── Chart.js defaults for dark theme ───
 Chart.defaults.color = '#52525b';
 Chart.defaults.borderColor = 'rgba(255,255,255,.04)';
@@ -1038,22 +1048,25 @@ function renderDiskCards(disks) {
   const cardsEl = document.getElementById('disk-cards');
 
   cardsEl.innerHTML = disks.map(d => {
-    const barClass = d.used_pct >= 95 ? 'danger' : d.used_pct >= 85 ? 'warn' : '';
-    const valClass = d.used_pct >= 95 ? 'danger' : d.used_pct >= 85 ? 'warn' : 'ok';
-    const usedGB = (d.total_gb - d.free_gb).toFixed(1);
+    const usedPct = d.used_pct != null ? d.used_pct : 0;
+    const barClass = usedPct >= 95 ? 'danger' : usedPct >= 85 ? 'warn' : '';
+    const valClass = usedPct >= 95 ? 'danger' : usedPct >= 85 ? 'warn' : 'ok';
+    const totalGB = d.total_gb != null ? d.total_gb : 0;
+    const freeGB = d.free_gb != null ? d.free_gb : 0;
+    const usedGB = totalGB - freeGB;
     return `
       <div class="disk-card">
         <div class="card-label">💾 Диск ${d.mount}</div>
         <div class="disk-info">
-          <div class="card-value ${valClass}">${d.used_pct.toFixed(1)}%</div>
-          <div class="card-sub" style="margin-top:0">${usedGB} / ${d.total_gb.toFixed(1)} GB</div>
+          <div class="card-value ${valClass}">${safeToFixed(usedPct, 1)}%</div>
+          <div class="card-sub" style="margin-top:0">${usedGB.toFixed(1)} / ${totalGB.toFixed(1)} GB</div>
         </div>
         <div class="disk-bar-wrap">
-          <div class="disk-bar ${barClass}" style="width:${Math.min(d.used_pct,100)}%"></div>
+          <div class="disk-bar ${barClass}" style="width:${Math.min(usedPct,100)}%"></div>
         </div>
         <div class="card-sub" style="justify-content:space-between">
-          <span>Занято ${usedGB} GB</span>
-          <span>Свободно ${d.free_gb.toFixed(1)} GB</span>
+          <span>Занято ${usedGB.toFixed(1)} GB</span>
+          <span>Свободно ${freeGB.toFixed(1)} GB</span>
         </div>
       </div>`;
   }).join('');
@@ -1074,7 +1087,8 @@ function setSpeedChartData(chart, labels, d0, d1) {
 
 function pushLive(chart, label, value) {
   chart.data.labels.push(label);
-  chart.data.datasets[0].data.push(value);
+  const safeValue = (value != null && !isNaN(value)) ? value : 0;
+  chart.data.datasets[0].data.push(safeValue);
   if (chart.data.labels.length > MAX_LIVE) {
     chart.data.labels.shift();
     chart.data.datasets[0].data.shift();
@@ -1084,8 +1098,10 @@ function pushLive(chart, label, value) {
 
 function pushSpeedLive(chart, label, v0, v1) {
   chart.data.labels.push(label);
-  chart.data.datasets[0].data.push(v0);
-  chart.data.datasets[1].data.push(v1);
+  const safeV0 = (v0 != null && !isNaN(v0)) ? v0 : 0;
+  const safeV1 = (v1 != null && !isNaN(v1)) ? v1 : 0;
+  chart.data.datasets[0].data.push(safeV0);
+  chart.data.datasets[1].data.push(safeV1);
   if (chart.data.labels.length > MAX_LIVE) {
     chart.data.labels.shift();
     chart.data.datasets[0].data.shift();
@@ -1135,9 +1151,9 @@ async function loadSpeedtest(hours) {
   content.style.display = 'block';
 
   const last = results[results.length - 1];
-  document.getElementById('st-down').textContent  = last.download_mbps.toFixed(1);
-  document.getElementById('st-up').textContent    = last.upload_mbps.toFixed(1);
-  document.getElementById('st-ping').textContent  = last.ping_ms.toFixed(0);
+  document.getElementById('st-down').textContent  = safeToFixed(last.download_mbps, 1);
+  document.getElementById('st-up').textContent    = safeToFixed(last.upload_mbps, 1);
+  document.getElementById('st-ping').textContent  = safeToFixed(last.ping_ms, 0);
   document.getElementById('st-server').textContent = '🌍 Сервер: ' + last.server;
   document.getElementById('speedtest-time').textContent =
     'последний замер: ' + new Date(last.time).toLocaleTimeString('ru');
@@ -1146,9 +1162,9 @@ async function loadSpeedtest(hours) {
   document.getElementById('st-history').innerHTML = history.map(r => `
     <div class="st-grid st-row">
       <span class="st-time">${new Date(r.time).toLocaleTimeString('ru')}</span>
-      <span class="st-val">${r.download_mbps.toFixed(1)}</span>
-      <span class="st-val">${r.upload_mbps.toFixed(1)}</span>
-      <span class="st-val">${r.ping_ms.toFixed(0)} ms</span>
+      <span class="st-val">${safeToFixed(r.download_mbps, 1)}</span>
+      <span class="st-val">${safeToFixed(r.upload_mbps, 1)}</span>
+      <span class="st-val">${safeToFixed(r.ping_ms, 0)} ms</span>
     </div>
   `).join('');
 }
@@ -1161,8 +1177,9 @@ function switchLive(btn) {
 }
 
 function colorFor(v, warn, danger) {
-  if (v >= danger) return 'danger';
-  if (v >= warn)   return 'warn';
+  const num = v != null ? v : 0;
+  if (num >= danger) return 'danger';
+  if (num >= warn)   return 'warn';
   return 'ok';
 }
 
@@ -1170,16 +1187,17 @@ function updateCards(d) {
   document.getElementById('hostname').textContent = d.host;
 
   const cpuEl = document.getElementById('cpu');
-  cpuEl.textContent = d.cpu_pct.toFixed(1) + '%';
+  cpuEl.textContent = safeToFixed(d.cpu_pct, 1) + '%';
   cpuEl.className = 'card-value ' + colorFor(d.cpu_pct, 50, 80);
 
   const cpuDot = document.getElementById('cpu-dot');
   const cpuStatus = document.getElementById('cpu-status');
-  if (d.cpu_pct > 80) {
+  const cpuVal = d.cpu_pct != null ? d.cpu_pct : 0;
+  if (cpuVal > 80) {
     cpuDot.style.background = 'var(--red)';
     cpuStatus.textContent = 'перегрузка';
     cpuStatus.style.color = 'var(--red)';
-  } else if (d.cpu_pct > 50) {
+  } else if (cpuVal > 50) {
     cpuDot.style.background = 'var(--yellow)';
     cpuStatus.textContent = 'повышенная нагрузка';
     cpuStatus.style.color = 'var(--yellow)';
@@ -1190,12 +1208,13 @@ function updateCards(d) {
   }
 
   const ramEl = document.getElementById('ram');
-  ramEl.textContent = d.ram_used_pct.toFixed(0) + '%';
+  ramEl.textContent = safeToFixed(d.ram_used_pct, 0) + '%';
   ramEl.className = 'card-value ' + colorFor(d.ram_used_pct, 70, 90);
-  document.getElementById('ram-sub').textContent = 'свободно ' + d.ram_free_gb.toFixed(1) + ' GB';
+  const ramFree = d.ram_free_gb != null ? d.ram_free_gb : 0;
+  document.getElementById('ram-sub').textContent = 'свободно ' + ramFree.toFixed(1) + ' GB';
 
-  document.getElementById('net-recv').textContent = '↓ ' + d.net_recv_mbps.toFixed(2) + ' MB/s';
-  document.getElementById('net-sent').textContent = '↑ ' + d.net_sent_mbps.toFixed(2) + ' MB/s';
+  document.getElementById('net-recv').textContent = '↓ ' + safeToFixed(d.net_recv_mbps, 2) + ' MB/s';
+  document.getElementById('net-sent').textContent = '↑ ' + safeToFixed(d.net_sent_mbps, 2) + ' MB/s';
 
   renderDiskCards(d.disks);
   renderSysInfo(d.sys_info);
@@ -1232,7 +1251,7 @@ function renderPorts(ports) {
   if (!ports || ports.length === 0) { el.innerHTML = ''; return; }
   el.innerHTML = ports.map(p => {
     const cls = p.open ? 'open' : 'closed';
-    const latency = p.open ? `<span class="port-latency">${p.latency.toFixed(1)}ms</span>` : '';
+    const latency = p.open ? `<span class="port-latency">${safeToFixed(p.latency, 1)}ms</span>` : '';
     return `<div class="port-badge ${cls}">
       <span class="port-dot"></span>
       ${p.name} :${p.port} ${latency}
@@ -1244,10 +1263,11 @@ function renderTemperatures(temps) {
   const el = document.getElementById('temp-cards');
   if (!temps || temps.length === 0) { el.innerHTML = ''; return; }
   el.innerHTML = temps.map(t => {
-    const color = t.current > 80 ? 'var(--red)' : t.current > 60 ? 'var(--yellow)' : 'var(--green)';
+    const tempVal = t.current != null ? t.current : 0;
+    const color = tempVal > 80 ? 'var(--red)' : tempVal > 60 ? 'var(--yellow)' : 'var(--green)';
     return `<div class="temp-badge">
       <span>🌡</span>
-      <span class="temp-val" style="color:${color}">${t.current.toFixed(0)}°C</span>
+      <span class="temp-val" style="color:${color}">${safeToFixed(tempVal, 0)}°C</span>
       <span class="temp-label">${t.label}</span>
     </div>`;
   }).join('');
@@ -1262,11 +1282,32 @@ function renderTopProcesses(procs) {
     <tr>
       <td style="color:var(--text-dim)">${p.pid}</td>
       <td class="proc-name">${p.name}</td>
-      <td class="proc-cpu">${p.cpu_pct.toFixed(1)}%</td>
-      <td class="proc-mem">${p.mem_mb.toFixed(0)} MB</td>
-      <td style="color:var(--text-muted)">${p.mem_pct.toFixed(1)}%</td>
+      <td class="proc-cpu">${safeToFixed(p.cpu_pct, 1)}%</td>
+      <td class="proc-mem">${safeToFixed(p.mem_mb, 0)} MB</td>
+      <td style="color:var(--text-muted)">${safeToFixed(p.mem_pct, 1)}%</td>
+      <td><button onclick="killProcess('${activeHost}', ${p.pid}, '${p.name}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--red);font-size:12px">❌ Kill</button></td>
     </tr>
   `).join('');
+}
+
+async function killProcess(host, pid, name) {
+  if (!confirm(`Вы уверены, что хотите завершить процесс ${name} (PID: ${pid}) на хосте ${host}?`)) {
+    return;
+  }
+  try {
+    const res = await fetch('/api/kill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host, pid })
+    });
+    if (res.ok) {
+      alert(`Команда на завершение процесса ${pid} отправлена`);
+    } else {
+      alert('Ошибка отправки команды');
+    }
+  } catch (err) {
+    alert('Ошибка: ' + err);
+  }
 }
 
 function renderSidebar() {
@@ -1279,7 +1320,7 @@ function renderSidebar() {
     div.innerHTML = `
       <span class="host-dot ${isOnline ? 'on' : ''}"></span>
       <span class="host-name">${h.host}</span>
-      <span class="host-cpu">${isOnline ? h.cpu_pct.toFixed(0) + '%' : 'offline'}</span>
+      <span class="host-cpu">${isOnline ? safeToFixed(h.cpu_pct, 0) + '%' : 'offline'}</span>
     `;
     div.onclick = () => selectHost(h.host);
     list.appendChild(div);

@@ -2,6 +2,7 @@ package collector
 
 import (
 	"log/slog"
+	"math"
 	"runtime"
 	"sort"
 	"time"
@@ -45,6 +46,12 @@ func netSpeed() (sentMBps, recvMBps float64) {
 		if elapsed > 0 {
 			sentMBps = float64(totalSent-prevSent) / elapsed / 1024 / 1024
 			recvMBps = float64(totalRecv-prevRecv) / elapsed / 1024 / 1024
+			if math.IsNaN(sentMBps) {
+				sentMBps = 0
+			}
+			if math.IsNaN(recvMBps) {
+				recvMBps = 0
+			}
 		}
 	}
 	prevSent = totalSent
@@ -71,6 +78,12 @@ func diskSpeed() (readMBps, writeMBps float64) {
 		if elapsed > 0 {
 			readMBps = float64(totalRead-prevDiskRead) / elapsed / 1024 / 1024
 			writeMBps = float64(totalWrite-prevDiskWrite) / elapsed / 1024 / 1024
+			if math.IsNaN(readMBps) {
+				readMBps = 0
+			}
+			if math.IsNaN(writeMBps) {
+				writeMBps = 0
+			}
 		}
 	}
 	prevDiskRead = totalRead
@@ -141,6 +154,12 @@ func collectDisks() (disks []models.DiskInfo, usedPct, freeGB float64) {
 	if totalSize > 0 {
 		usedPct = float64(totalSize-totalFree) / float64(totalSize) * 100
 		freeGB = float64(totalFree) / 1024 / 1024 / 1024
+		if math.IsNaN(usedPct) {
+			usedPct = 0
+		}
+		if math.IsNaN(freeGB) {
+			freeGB = 0
+		}
 	}
 	return
 }
@@ -247,12 +266,16 @@ func Collect(host string) models.MetricEvent {
 
 	var cpuVal float64
 	if len(cpuPct) > 0 {
-		cpuVal = cpuPct[0]
+		if !math.IsNaN(cpuPct[0]) {
+			cpuVal = cpuPct[0]
+		}
 	}
 
 	var ramUsed, ramFreeGB float64
 	if memory != nil {
-		ramUsed = memory.UsedPercent
+		if !math.IsNaN(memory.UsedPercent) {
+			ramUsed = memory.UsedPercent
+		}
 		ramFreeGB = float64(memory.Available) / 1024 / 1024 / 1024
 	}
 

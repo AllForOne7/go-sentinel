@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -299,8 +300,32 @@ func main() {
 		msg.Ack()
 	}, nats.Durable("dashboard"), nats.DeliverNew())
 	if err != nil {
-		slog.Error("ошибка подписки на метрики", "err", err)
-		return
+		// Если consumer уже существует с другим конфигом — удаляем и создаём заново
+		if strings.Contains(err.Error(), "consumer name already in use") || strings.Contains(err.Error(), "already exists") {
+			slog.Warn("consumer 'dashboard' уже существует, удаляем и пересоздаём...")
+			_ = js.DeleteConsumer("METRICS", "dashboard")
+			_, err = js.Subscribe("metrics.>", func(msg *nats.Msg) {
+				var e models.MetricEvent
+				if err := json.Unmarshal(msg.Data, &e); err != nil {
+					slog.Error("ошибка парсинга метрики", "err", err)
+					msg.Ack()
+					return
+				}
+				store.Set(e)
+				updatePrometheusMetrics()
+				data, _ := json.Marshal(e)
+				clients.broadcast(data)
+				msg.Ack()
+			}, nats.Durable("dashboard"), nats.DeliverNew())
+			if err != nil {
+				slog.Error("не удалось создать подписку после пересоздания", "err", err)
+				os.Exit(1)
+			}
+			slog.Info("подписка dashboard пересоздана")
+		} else {
+			slog.Error("ошибка подписки на метрики", "err", err)
+			os.Exit(1)
+		}
 	}
 	slog.Info("подписка на метрики создана")
 
@@ -424,6 +449,37 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(incidents)
+	}))
+
+	// Kill process API
+	type KillRequest struct {
+		Host string `json:"host"`
+		PID  int    `json:"pid"`
+	}
+
+	http.HandleFunc("/api/kill", auth(sessionSecret, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", 405)
+			return
+		}
+		var req KillRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		cmd := map[string]interface{}{
+			"action": "KILL",
+			"pid":    req.PID,
+		}
+		data, _ := json.Marshal(cmd)
+		topic := "commands." + req.Host
+		if err := nc.Publish(topic, data); err != nil {
+			slog.Error("ошибка отправки команды KILL", "err", err)
+			http.Error(w, "failed to send command", 500)
+			return
+		}
+		slog.Info("команда KILL отправлена", "host", req.Host, "pid", req.PID)
+		w.WriteHeader(http.StatusOK)
 	}))
 
 	http.HandleFunc("/api/rules", auth(sessionSecret, func(w http.ResponseWriter, r *http.Request) {

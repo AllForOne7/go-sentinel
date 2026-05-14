@@ -86,11 +86,53 @@ func main() {
 		MaxAge:   7 * 24 * time.Hour,
 	})
 
+	js.AddStream(&nats.StreamConfig{
+		Name:     "COMMANDS",
+		Subjects: []string{"commands.>"},
+		MaxAge:   24 * time.Hour,
+	})
+
 	// Парсим порты для мониторинга из .env
 	portConfigs := collector.ParsePortsConfig(os.Getenv("MONITOR_PORTS"))
 	if len(portConfigs) > 0 {
 		slog.Info("мониторинг портов включён", "ports", len(portConfigs))
 	}
+
+	// Подписка на команды для управления процессами
+	go func() {
+		js, err := nc.JetStream()
+		if err != nil {
+			slog.Error("ошибка JetStream для команд", "err", err)
+			return
+		}
+		_, err = js.Subscribe("commands."+hostName, func(msg *nats.Msg) {
+			var cmd struct {
+				Action string `json:"action"`
+				PID    int    `json:"pid"`
+			}
+			if err := json.Unmarshal(msg.Data, &cmd); err != nil {
+				slog.Error("ошибка парсинга команды", "err", err)
+				return
+			}
+			if cmd.Action == "KILL" {
+				proc, err := os.FindProcess(cmd.PID)
+				if err != nil {
+					slog.Error("процесс не найден", "pid", cmd.PID, "err", err)
+					return
+				}
+				if err := proc.Kill(); err != nil {
+					slog.Error("не удалось завершить процесс", "pid", cmd.PID, "err", err)
+				} else {
+					slog.Info("процесс завершён", "pid", cmd.PID)
+				}
+			}
+			msg.Ack()
+		}, nats.Durable("agent-commands"), nats.DeliverNew())
+		if err != nil {
+			slog.Error("ошибка подписки на команды", "err", err)
+		}
+		slog.Info("подписка на команды активна", "topic", "commands."+hostName)
+	}()
 
 	// Собираем системную информацию при старте
 	sysInfo := collector.CollectSystemInfo()
