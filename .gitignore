@@ -1,0 +1,17 @@
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+.env
+
+*.db
+logs/
+data/
+
+nats_data/
+pg_data/
+
+vendor/

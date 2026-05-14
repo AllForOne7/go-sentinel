@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel — История алертов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg-card: #1a1d27;
+    --bg-sidebar: #161822;
+    --border: rgba(255,255,255,.06);
+    --border-hover: rgba(255,255,255,.12);
+    --text: #f4f4f5;
+    --text-muted: #a1a1aa;
+    --text-dim: #71717a;
+    --accent: #818cf8;
+    --accent-bg: rgba(129,140,248,.12);
+    --green: #34d399;
+    --green-bg: rgba(52,211,153,.12);
+    --yellow: #fbbf24;
+    --yellow-bg: rgba(251,191,36,.12);
+    --red: #f87171;
+    --red-bg: rgba(248,113,113,.12);
+    --radius: 14px;
+    --radius-sm: 10px;
+    --transition: .2s cubic-bezier(.4,0,.2,1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ─── Sidebar ─── */
+  .sidebar {
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 10px;
+    margin-bottom: 28px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #6366f1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 2px 12px rgba(99,102,241,.3);
+  }
+
+  .logo-text {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    background: linear-gradient(135deg, #e4e4e7, #a1a1aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+  }
+
+  .sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: background var(--transition), color var(--transition);
+  }
+
+  .sidebar-nav a:hover { background: rgba(255,255,255,.04); color: var(--text); }
+  .sidebar-nav a.active { background: var(--accent-bg); color: var(--accent); }
+  .sidebar-nav .spacer { flex: 1; }
+  .sidebar-nav a.exit { color: var(--red); }
+  .sidebar-nav a.exit:hover { background: var(--red-bg); }
+
+  .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+
+  /* ─── Main ─── */
+  .main {
+    padding: 28px 36px;
+    min-width: 0;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .page-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+
+  .range-btns { display: flex; gap: 4px; }
+
+  .range-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-dim);
+    transition: all var(--transition);
+  }
+
+  .range-btn:hover {
+    background: rgba(255,255,255,.04);
+    color: var(--text-muted);
+    border-color: var(--border-hover);
+  }
+
+  .range-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(129,140,248,.3);
+  }
+
+  /* ─── Stats ─── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .stat {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 20px;
+    border: 1px solid var(--border);
+    transition: all var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  .stat:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0,0,0,.2);
+  }
+
+  .stat:hover::before { opacity: 1; }
+
+  .stat:nth-child(1)::before { background: linear-gradient(90deg, var(--accent), #6366f1); }
+  .stat:nth-child(2)::before { background: linear-gradient(90deg, var(--red), #ef4444); }
+  .stat:nth-child(3)::before { background: linear-gradient(90deg, var(--green), #10b981); }
+
+  .stat-icon {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    color: #fff;
+  }
+
+  /* ─── Table ─── */
+  .table-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  th {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 14px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,.02);
+  }
+
+  td {
+    font-size: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255,255,255,.03);
+    transition: background var(--transition);
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  .cpu  { background: var(--accent-bg); color: var(--accent); }
+  .ram  { background: var(--yellow-bg); color: var(--yellow); }
+  .disk { background: var(--red-bg); color: var(--red); }
+
+  .status-active {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--red-bg);
+    color: var(--red);
+    border: 1px solid rgba(248,113,113,.15);
+  }
+
+  .status-resolved {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--green-bg);
+    color: var(--green);
+    border: 1px solid rgba(52,211,153,.15);
+  }
+
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  .empty-state .empty-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+
+  .val-bold {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .time-cell {
+    color: var(--text-dim);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .duration-cell {
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 4px; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .main { padding: 20px 16px; }
+    .stats { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🛡</div>
+      <span class="logo-text">Sentinel</span>
+    </div>
+    <div class="sidebar-nav">
+      <a href="/">
+        <span class="nav-icon">📊</span> Дашборд
+      </a>
+      <a href="/rules">
+        <span class="nav-icon">⚡</span> Правила алертов
+      </a>
+      <a href="/incidents" class="active">
+        <span class="nav-icon">🔔</span> История алертов
+      </a>
+      <div class="spacer"></div>
+      <a href="/logout" class="exit">
+        <span class="nav-icon">🚪</span> Выйти
+      </a>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="page-header">
+      <h1>🔔 История алертов</h1>
+      <div class="range-btns">
+        <button class="range-btn active" onclick="load(24, this)">24 часа</button>
+        <button class="range-btn" onclick="load(168, this)">7 дней</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-icon">📋</div>
+        <div class="stat-label">Всего инцидентов</div>
+        <div class="stat-value" id="stat-total">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">🔴</div>
+        <div class="stat-label">Активных сейчас</div>
+        <div class="stat-value" id="stat-active" style="color:var(--red)">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">✅</div>
+        <div class="stat-label">Решено</div>
+        <div class="stat-value" id="stat-resolved" style="color:var(--green)">—</div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Метрика</th>
+            <th>Хост</th>
+            <th>Значение</th>
+            <th>Порог</th>
+        <th>Начало</th>
+        <th>Закрыт</th>
+        <th>Длительность</th>
+        <th>Статус</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty-state" id="empty" style="display:none">
+        <div class="empty-icon">🎉</div>
+        Нет инцидентов за выбранный период
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const metricLabels = { cpu: 'CPU', ram: 'RAM', disk: 'Диск' };
+
+async function load(hours, btn) {
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  const res = await fetch('/api/incidents?hours=' + hours);
+  const incidents = await res.json();
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('empty');
+
+  if (!incidents || incidents.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    document.getElementById('stat-total').textContent = '0';
+    document.getElementById('stat-active').textContent = '0';
+    document.getElementById('stat-resolved').textContent = '0';
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  const active   = incidents.filter(i => !i.resolved_at).length;
+  const resolved = incidents.filter(i =>  i.resolved_at).length;
+  document.getElementById('stat-total').textContent    = incidents.length;
+  document.getElementById('stat-active').textContent   = active;
+  document.getElementById('stat-resolved').textContent = resolved;
+
+  tbody.innerHTML = incidents.map(inc => {
+    const started = new Date(inc.started_at).toLocaleString('ru');
+    const resolved = inc.resolved_at
+      ? new Date(inc.resolved_at).toLocaleString('ru')
+      : '—';
+    const status  = inc.resolved_at
+      ? '<span class="status-resolved">✓ решено</span>'
+      : '<span class="status-active">● активен</span>';
+    return `
+      <tr>
+        <td><span class="badge ${inc.metric}">${metricLabels[inc.metric] || inc.metric}</span></td>
+        <td>${inc.host}</td>
+        <td class="val-bold">${inc.value.toFixed(1)}%</td>
+        <td style="color:var(--text-muted)">${inc.threshold.toFixed(0)}%</td>
+        <td class="time-cell">${started}</td>
+        <td class="time-cell">${resolved}</td>
+        <td class="duration-cell">${inc.duration}</td>
+        <td>${status}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+load(24, null);
+setInterval(() => load(24, document.querySelector('.range-btn.active')), 30000);
+</script>
+</body>
+</html>

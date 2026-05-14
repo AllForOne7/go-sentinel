@@ -1,0 +1,126 @@
+services:
+  # --- Инфраструктура ---
+  nats:
+    image: nats:latest
+    container_name: sentinel-nats
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats_data:/data
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    container_name: sentinel-db
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password # Рекомендуется вынести в .env
+      - POSTGRES_DB=sentinel
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  # --- Сервисы Sentinel ---
+  processor:
+    build:
+      context: .
+      dockerfile: Dockerfile.processor
+    container_name: sentinel-processor
+    env_file: .env
+    environment:
+      - NATS_URL=nats://nats:4222
+      - DATABASE_URL=postgres://postgres:password@db:5432/sentinel?sslmode=disable
+      - DB_PATH=/app/data/metrics.db
+      - LOG_DIR=/app/logs
+    volumes:
+      - db_data:/app/data
+      - logs_data:/app/logs
+    depends_on:
+      - nats
+      - db
+    restart: on-failure
+
+  alerter:
+    build:
+      context: .
+      dockerfile: Dockerfile.alerter
+    container_name: sentinel-alerter
+    env_file: .env
+    environment:
+      - NATS_URL=nats://nats:4222
+      - DATABASE_URL=postgres://postgres:password@db:5432/sentinel?sslmode=disable
+      - DB_PATH=/app/data/metrics.db
+      - LOG_DIR=/app/logs
+    volumes:
+      - db_data:/app/data
+      - logs_data:/app/logs
+    depends_on:
+      - nats
+      - db
+    restart: on-failure
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: sentinel-dashboard
+    env_file: .env
+    environment:
+      - NATS_URL=nats://nats:4222
+      - DATABASE_URL=postgres://postgres:password@db:5432/sentinel?sslmode=disable
+      - DB_PATH=/app/data/metrics.db
+      - LOG_DIR=/app/logs
+    ports:
+      - "8080:8080"
+    volumes:
+      - db_data:/app/data
+      - logs_data:/app/logs
+    depends_on:
+      - nats
+      - db
+    restart: on-failure
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: sentinel-agent
+    env_file: .env
+    environment:
+      - NATS_URL=nats://nats:4222
+      - LOG_DIR=/app/logs
+    volumes:
+      - logs_data:/app/logs
+    depends_on:
+      - nats
+    restart: on-failure
+    pid: host # Важно для сбора метрик реального железа
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: sentinel-bot
+    env_file: .env
+    environment:
+      - NATS_URL=nats://nats:4222
+      - DATABASE_URL=postgres://postgres:password@db:5432/sentinel?sslmode=disable
+      - DB_PATH=/app/data/metrics.db
+      - LOG_DIR=/app/logs
+    volumes:
+      - db_data:/app/data
+      - logs_data:/app/logs
+    depends_on:
+      - nats
+      - db
+    restart: on-failure
+
+volumes:
+  nats_data:
+  db_data:      # Для SQLite (если понадобится переключиться назад)
+  logs_data:
+  pg_data:      # Для PostgreSQL (основное хранилище)

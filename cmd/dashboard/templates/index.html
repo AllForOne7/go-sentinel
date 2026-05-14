@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel — Мониторинг</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg-card: #1a1d27;
+    --bg-card-hover: #1f2230;
+    --bg-sidebar: #161822;
+    --border: rgba(255,255,255,.06);
+    --border-hover: rgba(255,255,255,.12);
+    --text: #f4f4f5;
+    --text-muted: #a1a1aa;
+    --text-dim: #71717a;
+    --accent: #818cf8;
+    --accent-bg: rgba(129,140,248,.12);
+    --green: #34d399;
+    --green-bg: rgba(52,211,153,.12);
+    --yellow: #fbbf24;
+    --yellow-bg: rgba(251,191,36,.12);
+    --red: #f87171;
+    --red-bg: rgba(248,113,113,.12);
+    --blue: #60a5fa;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,.3), 0 4px 20px rgba(0,0,0,.2);
+    --shadow-lg: 0 4px 30px rgba(0,0,0,.4);
+    --transition: .2s cubic-bezier(.4,0,.2,1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Layout ─── */
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ─── Sidebar ─── */
+  .sidebar {
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 4px; }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 10px;
+    margin-bottom: 28px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #6366f1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 2px 12px rgba(99,102,241,.3);
+  }
+
+  .logo-text {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    background: linear-gradient(135deg, #e4e4e7, #a1a1aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .sidebar-section {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    padding: 0 10px;
+    margin-bottom: 10px;
+  }
+
+  .host-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    margin-bottom: 2px;
+    transition: all var(--transition);
+    border: 1px solid transparent;
+  }
+
+  .host-item:hover {
+    background: rgba(255,255,255,.04);
+    border-color: var(--border);
+  }
+
+  .host-item.active {
+    background: var(--accent-bg);
+    border-color: rgba(129,140,248,.2);
+  }
+
+  .host-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--text-dim);
+    transition: all var(--transition);
+  }
+
+  .host-dot.on {
+    background: var(--green);
+    box-shadow: 0 0 8px rgba(52,211,153,.4);
+  }
+
+  .host-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .host-item.active .host-name { color: var(--accent); }
+
+  .host-cpu {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .host-item.active .host-cpu { color: var(--accent); opacity: .7; }
+
+  .sidebar-nav {
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: background var(--transition), color var(--transition);
+  }
+
+  .sidebar-nav a:hover { background: rgba(255,255,255,.04); color: var(--text); }
+  .sidebar-nav a.active { background: var(--accent-bg); color: var(--accent); }
+  .sidebar-nav a.exit { color: var(--red); }
+  .sidebar-nav a.exit:hover { background: var(--red-bg); }
+
+  .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+
+  /* ─── Main ─── */
+  .main {
+    padding: 28px 36px;
+    min-width: 0;
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .page-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .page-title h1 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-dim);
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+    transition: all var(--transition);
+  }
+
+  .live-badge.on {
+    color: var(--green);
+    background: var(--green-bg);
+    border-color: rgba(52,211,153,.2);
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    transition: all var(--transition);
+  }
+
+  .live-badge.on .live-dot {
+    background: var(--green);
+    box-shadow: 0 0 6px rgba(52,211,153,.5);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .4; }
+  }
+
+  /* ─── Cards ─── */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 24px;
+    border: 1px solid var(--border);
+    transition: all var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  .card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+  }
+
+  .card:hover::before { opacity: 1; }
+
+  .card-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-bottom: 14px;
+  }
+
+  .card-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 6px;
+  }
+
+  .card-value {
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    color: #fff;
+  }
+
+  .card-sub {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .card-sub .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  /* Card color variants */
+  .card.cpu::before { background: linear-gradient(90deg, var(--accent), #6366f1); }
+  .card.cpu .card-icon { background: var(--accent-bg); }
+  .card.ram::before { background: linear-gradient(90deg, var(--yellow), #f59e0b); }
+  .card.ram .card-icon { background: var(--yellow-bg); }
+  .card.net::before { background: linear-gradient(90deg, var(--green), #10b981); }
+  .card.net .card-icon { background: var(--green-bg); }
+
+  .ok     { color: var(--green); }
+  .warn   { color: var(--yellow); }
+  .danger { color: var(--red); }
+
+  /* ─── Disk Cards ─── */
+  .disk-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .disk-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 24px;
+    border: 1px solid var(--border);
+    transition: all var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .disk-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--green), #10b981);
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  .disk-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+  }
+
+  .disk-card:hover::before { opacity: 1; }
+
+  .disk-card .card-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .disk-card .disk-info {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+
+  .disk-bar-wrap {
+    margin-top: 14px;
+    background: rgba(255,255,255,.06);
+    border-radius: 6px;
+    height: 8px;
+    overflow: hidden;
+  }
+
+  .disk-bar {
+    height: 100%;
+    border-radius: 6px;
+    background: var(--green);
+    transition: width .5s cubic-bezier(.4,0,.2,1);
+  }
+
+  .disk-bar.warn { background: var(--yellow); }
+  .disk-bar.danger { background: var(--red); }
+
+  /* ─── Charts ─── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .chart-box {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 24px;
+    border: 1px solid var(--border);
+    transition: all var(--transition);
+  }
+
+  .chart-box:hover {
+    border-color: var(--border-hover);
+  }
+
+  .chart-box.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .chart-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chart-header h2 .chart-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .range-btns { display: flex; gap: 4px; }
+
+  .range-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-dim);
+    transition: all var(--transition);
+  }
+
+  .range-btn:hover {
+    background: rgba(255,255,255,.04);
+    color: var(--text-muted);
+    border-color: var(--border-hover);
+  }
+
+  .range-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(129,140,248,.3);
+  }
+
+  canvas { max-height: 200px; }
+
+  /* ─── Speedtest ─── */
+  .speedtest-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .speedtest-item {
+    padding: 16px;
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,.02);
+    border: 1px solid var(--border);
+  }
+
+  .speedtest-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 8px;
+  }
+
+  .speedtest-value {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    line-height: 1.1;
+  }
+
+  .speedtest-unit {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-left: 2px;
+  }
+
+  .st-grid {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px 60px;
+  }
+
+  .st-server {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .st-header {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+
+  .st-header span {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  .st-row {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,.03);
+    transition: background var(--transition);
+  }
+
+  .st-row:hover { background: rgba(255,255,255,.02); }
+
+  .st-row span {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .st-row .st-time { color: var(--text-muted); }
+  .st-row .st-val { color: #fff; }
+
+  .empty-state {
+    font-size: 13px;
+    color: var(--text-dim);
+    padding: 20px 0;
+    text-align: center;
+  }
+
+  /* ─── System Info Bar ─── */
+  .sys-info-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 12px 20px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .sys-info-bar .sys-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: rgba(255,255,255,.03);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .sys-info-bar .sys-tag .sys-icon { font-size: 14px; }
+  .sys-info-bar .sys-tag .sys-val { color: var(--text); font-weight: 500; }
+
+  /* ─── Ports ─── */
+  .ports-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .port-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    transition: all var(--transition);
+  }
+
+  .port-badge.open {
+    border-color: rgba(52,211,153,.2);
+    color: var(--green);
+  }
+
+  .port-badge.closed {
+    border-color: rgba(248,113,113,.2);
+    color: var(--red);
+    background: var(--red-bg);
+  }
+
+  .port-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .port-badge.open .port-dot { background: var(--green); }
+  .port-badge.closed .port-dot { background: var(--red); }
+
+  .port-latency {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  /* ─── Temperatures ─── */
+  .temp-cards {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .temp-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    font-size: 14px;
+  }
+
+  .temp-badge .temp-val {
+    font-weight: 700;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .temp-badge .temp-label {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* ─── Processes Table ─── */
+  .procs-box {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+
+  .procs-box h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .procs-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .procs-table th {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .procs-table td {
+    font-size: 14px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,.03);
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+
+  .procs-table tr:last-child td { border-bottom: none; }
+
+  .procs-table .proc-name {
+    font-weight: 500;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .procs-table .proc-cpu { color: var(--accent); font-weight: 600; }
+  .procs-table .proc-mem { color: var(--yellow); }
+
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.14); }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 1100px) {
+    .charts-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar {
+      position: fixed;
+      left: -260px;
+      top: 0;
+      width: 260px;
+      z-index: 100;
+      transition: left var(--transition);
+    }
+    .sidebar.open { left: 0; box-shadow: var(--shadow-lg); }
+    .main { padding: 20px 16px; }
+    .cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🛡</div>
+      <span class="logo-text">Sentinel</span>
+    </div>
+
+    <div class="sidebar-section">Хосты</div>
+    <div id="hosts-list"></div>
+
+    <div class="sidebar-nav">
+      <a href="/" class="active">
+        <span class="nav-icon">📊</span> Дашборд
+      </a>
+      <a href="/rules">
+        <span class="nav-icon">⚡</span> Правила алертов
+      </a>
+      <a href="/incidents">
+        <span class="nav-icon">🔔</span> История алертов
+      </a>
+      <a href="/logout" class="exit">
+        <span class="nav-icon">🚪</span> Выйти
+      </a>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="top-bar">
+      <div class="page-title">
+        <h1 id="hostname">Ожидаю данные...</h1>
+      </div>
+      <div class="live-badge" id="live-badge">
+        <span class="live-dot"></span>
+        <span id="live-text">offline</span>
+      </div>
+    </div>
+
+    <!-- System Info -->
+    <div class="sys-info-bar" id="sys-info-bar" style="display:none"></div>
+
+    <!-- Ports -->
+    <div class="ports-bar" id="ports-bar"></div>
+
+    <!-- Temperatures -->
+    <div class="temp-cards" id="temp-cards"></div>
+
+    <!-- Metric Cards -->
+    <div class="cards">
+      <div class="card cpu">
+        <div class="card-icon">⚡</div>
+        <div class="card-label">Процессор</div>
+        <div class="card-value" id="cpu">—</div>
+        <div class="card-sub">
+          <span class="status-dot" id="cpu-dot" style="background:var(--text-dim)"></span>
+          <span id="cpu-status">нет данных</span>
+        </div>
+      </div>
+      <div class="card ram">
+        <div class="card-icon">🧠</div>
+        <div class="card-label">Память</div>
+        <div class="card-value" id="ram">—</div>
+        <div class="card-sub" id="ram-sub">нет данных</div>
+      </div>
+      <div class="card net">
+        <div class="card-icon">🌐</div>
+        <div class="card-label">Сеть</div>
+        <div class="card-value" id="net-recv" style="font-size:28px">—</div>
+        <div class="card-sub" id="net-sent">—</div>
+      </div>
+    </div>
+
+    <!-- Disk Cards (dynamic) -->
+    <div class="disk-cards" id="disk-cards"></div>
+
+    <!-- Top Processes -->
+    <div class="procs-box" id="procs-box" style="display:none">
+      <h3>🔥 Тяжёлые процессы</h3>
+      <table class="procs-table">
+        <thead>
+          <tr>
+            <th>PID</th>
+            <th>Процесс</th>
+            <th>CPU %</th>
+            <th>RAM MB</th>
+            <th>RAM %</th>
+          </tr>
+        </thead>
+        <tbody id="procs-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="chart-box">
+        <div class="chart-header">
+          <h2><span class="chart-dot" style="background:var(--accent)"></span> CPU %</h2>
+          <div class="range-btns">
+            <button class="range-btn active" onclick="loadHistory(1, this)">1ч</button>
+            <button class="range-btn" onclick="loadHistory(24, this)">24ч</button>
+            <button class="range-btn" onclick="switchLive(this)">live</button>
+          </div>
+        </div>
+        <canvas id="cpuChart"></canvas>
+      </div>
+
+      <div class="chart-box">
+        <div class="chart-header">
+          <h2><span class="chart-dot" style="background:var(--yellow)"></span> RAM %</h2>
+        </div>
+        <canvas id="ramChart"></canvas>
+      </div>
+
+      <div class="chart-box full-width">
+        <div class="chart-header">
+          <h2><span class="chart-dot" style="background:var(--green)"></span> Сеть MB/s</h2>
+        </div>
+        <canvas id="netChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Speedtest -->
+    <div class="chart-box">
+      <div class="chart-header">
+        <h2>🚀 Speedtest</h2>
+        <span id="speedtest-time" style="font-size:12px;color:var(--text-dim)"></span>
+      </div>
+
+      <div id="speedtest-empty" class="empty-state">
+        Нет данных — первый замер через минуту после старта агента
+      </div>
+
+      <div id="speedtest-content" style="display:none">
+        <div class="speedtest-grid">
+          <div class="speedtest-item">
+            <div class="speedtest-label">↓ Download</div>
+            <div class="speedtest-value" style="color:var(--green)">
+              <span id="st-down">—</span><span class="speedtest-unit">Mbps</span>
+            </div>
+          </div>
+          <div class="speedtest-item">
+            <div class="speedtest-label">↑ Upload</div>
+            <div class="speedtest-value" style="color:var(--accent)">
+              <span id="st-up">—</span><span class="speedtest-unit">Mbps</span>
+            </div>
+          </div>
+          <div class="speedtest-item">
+            <div class="speedtest-label">Ping</div>
+            <div class="speedtest-value" style="color:var(--yellow)">
+              <span id="st-ping">—</span><span class="speedtest-unit">ms</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="st-server" class="st-server"></div>
+
+        <div class="st-grid st-header">
+          <span>Время</span>
+          <span>↓ Mbps</span>
+          <span>↑ Mbps</span>
+          <span>Ping</span>
+        </div>
+        <div id="st-history"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const MAX_LIVE = 40;
+let isLive = false;
+let activeHost = null;
+let allHosts = {};
+let currentHistoryHours = 1;
+// ─── Chart.js defaults for dark theme ───
+Chart.defaults.color = '#52525b';
+Chart.defaults.borderColor = 'rgba(255,255,255,.04)';
+
+function makeChart(id, color) {
+  return new Chart(document.getElementById(id), {
+    type: 'line',
+    data: { labels: [], datasets: [{
+      data: [],
+      borderColor: color,
+      backgroundColor: color + '18',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      fill: true,
+      tension: 0.4,
+    }]},
+    options: {
+      animation: false,
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          min: 0, max: 100,
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#52525b', font: { size: 11, family: 'Inter' } }
+        },
+        x: {
+          ticks: { maxTicksLimit: 8, color: '#52525b', font: { size: 11, family: 'Inter' } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function makeSpeedChart(id, colors, labels) {
+  return new Chart(document.getElementById(id), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: colors.map((color, i) => ({
+        label: labels[i],
+        data: [],
+        borderColor: color,
+        backgroundColor: color + '18',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.4,
+      }))
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      plugins: {
+        legend: {
+          display: true,
+          labels: { font: { size: 12, family: 'Inter' }, color: '#71717a', boxWidth: 12, padding: 16 }
+        }
+      },
+      scales: {
+        y: {
+          min: 0,
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#52525b', font: { size: 11, family: 'Inter' }, callback: v => v.toFixed(1) + ' MB/s' }
+        },
+        x: {
+          ticks: { maxTicksLimit: 8, color: '#52525b', font: { size: 11, family: 'Inter' } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+const cpuChart = makeChart('cpuChart', '#818cf8');
+const ramChart = makeChart('ramChart', '#fbbf24');
+const netChart = makeSpeedChart('netChart', ['#34d399', '#818cf8'], ['↓ получено', '↑ отправлено']);
+
+// ─── Disk cards ───
+function renderDiskCards(disks) {
+  if (!disks || disks.length === 0) {
+    document.getElementById('disk-cards').innerHTML = '';
+    return;
+  }
+
+  const cardsEl = document.getElementById('disk-cards');
+
+  cardsEl.innerHTML = disks.map(d => {
+    const barClass = d.used_pct >= 95 ? 'danger' : d.used_pct >= 85 ? 'warn' : '';
+    const valClass = d.used_pct >= 95 ? 'danger' : d.used_pct >= 85 ? 'warn' : 'ok';
+    const usedGB = (d.total_gb - d.free_gb).toFixed(1);
+    return `
+      <div class="disk-card">
+        <div class="card-label">💾 Диск ${d.mount}</div>
+        <div class="disk-info">
+          <div class="card-value ${valClass}">${d.used_pct.toFixed(1)}%</div>
+          <div class="card-sub" style="margin-top:0">${usedGB} / ${d.total_gb.toFixed(1)} GB</div>
+        </div>
+        <div class="disk-bar-wrap">
+          <div class="disk-bar ${barClass}" style="width:${Math.min(d.used_pct,100)}%"></div>
+        </div>
+        <div class="card-sub" style="justify-content:space-between">
+          <span>Занято ${usedGB} GB</span>
+          <span>Свободно ${d.free_gb.toFixed(1)} GB</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function setChartData(chart, labels, data) {
+  chart.data.labels = labels;
+  chart.data.datasets[0].data = data;
+  chart.update();
+}
+
+function setSpeedChartData(chart, labels, d0, d1) {
+  chart.data.labels = labels;
+  chart.data.datasets[0].data = d0;
+  chart.data.datasets[1].data = d1;
+  chart.update();
+}
+
+function pushLive(chart, label, value) {
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(value);
+  if (chart.data.labels.length > MAX_LIVE) {
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+  }
+  chart.update();
+}
+
+function pushSpeedLive(chart, label, v0, v1) {
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(v0);
+  chart.data.datasets[1].data.push(v1);
+  if (chart.data.labels.length > MAX_LIVE) {
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+    chart.data.datasets[1].data.shift();
+  }
+  chart.update();
+}
+
+function clearChart(chart) {
+  chart.data.labels = [];
+  chart.data.datasets.forEach(d => d.data = []);
+  chart.update();
+}
+
+async function loadHistory(hours, btn) {
+  isLive = false;
+  currentHistoryHours = hours;
+  if (btn) {
+    document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if (!activeHost) return;
+  const res = await fetch(`/api/history?hours=${hours}&host=${activeHost}`);
+  const points = await res.json();
+  if (!points || points.length === 0) return;
+  const labels = points.map(p => p.time);
+  setChartData(cpuChart, labels, points.map(p => p.cpu));
+  setChartData(ramChart, labels, points.map(p => p.ram));
+  setSpeedChartData(netChart, labels, points.map(p => p.net_recv), points.map(p => p.net_sent));
+}
+
+async function loadSpeedtest(hours) {
+  if (!activeHost) return;
+  const res = await fetch(`/api/speedtest?host=${activeHost}&hours=${hours}`);
+  const results = await res.json();
+
+  const empty   = document.getElementById('speedtest-empty');
+  const content = document.getElementById('speedtest-content');
+
+  if (!results || results.length === 0) {
+    empty.style.display = 'block';
+    content.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  content.style.display = 'block';
+
+  const last = results[results.length - 1];
+  document.getElementById('st-down').textContent  = last.download_mbps.toFixed(1);
+  document.getElementById('st-up').textContent    = last.upload_mbps.toFixed(1);
+  document.getElementById('st-ping').textContent  = last.ping_ms.toFixed(0);
+  document.getElementById('st-server').textContent = '🌍 Сервер: ' + last.server;
+  document.getElementById('speedtest-time').textContent =
+    'последний замер: ' + new Date(last.time).toLocaleTimeString('ru');
+
+  const history = [...results].reverse().slice(0, 10);
+  document.getElementById('st-history').innerHTML = history.map(r => `
+    <div class="st-grid st-row">
+      <span class="st-time">${new Date(r.time).toLocaleTimeString('ru')}</span>
+      <span class="st-val">${r.download_mbps.toFixed(1)}</span>
+      <span class="st-val">${r.upload_mbps.toFixed(1)}</span>
+      <span class="st-val">${r.ping_ms.toFixed(0)} ms</span>
+    </div>
+  `).join('');
+}
+
+function switchLive(btn) {
+  isLive = true;
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  [cpuChart, ramChart, netChart].forEach(clearChart);
+}
+
+function colorFor(v, warn, danger) {
+  if (v >= danger) return 'danger';
+  if (v >= warn)   return 'warn';
+  return 'ok';
+}
+
+function updateCards(d) {
+  document.getElementById('hostname').textContent = d.host;
+
+  const cpuEl = document.getElementById('cpu');
+  cpuEl.textContent = d.cpu_pct.toFixed(1) + '%';
+  cpuEl.className = 'card-value ' + colorFor(d.cpu_pct, 50, 80);
+
+  const cpuDot = document.getElementById('cpu-dot');
+  const cpuStatus = document.getElementById('cpu-status');
+  if (d.cpu_pct > 80) {
+    cpuDot.style.background = 'var(--red)';
+    cpuStatus.textContent = 'перегрузка';
+    cpuStatus.style.color = 'var(--red)';
+  } else if (d.cpu_pct > 50) {
+    cpuDot.style.background = 'var(--yellow)';
+    cpuStatus.textContent = 'повышенная нагрузка';
+    cpuStatus.style.color = 'var(--yellow)';
+  } else {
+    cpuDot.style.background = 'var(--green)';
+    cpuStatus.textContent = 'в норме';
+    cpuStatus.style.color = 'var(--green)';
+  }
+
+  const ramEl = document.getElementById('ram');
+  ramEl.textContent = d.ram_used_pct.toFixed(0) + '%';
+  ramEl.className = 'card-value ' + colorFor(d.ram_used_pct, 70, 90);
+  document.getElementById('ram-sub').textContent = 'свободно ' + d.ram_free_gb.toFixed(1) + ' GB';
+
+  document.getElementById('net-recv').textContent = '↓ ' + d.net_recv_mbps.toFixed(2) + ' MB/s';
+  document.getElementById('net-sent').textContent = '↑ ' + d.net_sent_mbps.toFixed(2) + ' MB/s';
+
+  renderDiskCards(d.disks);
+  renderSysInfo(d.sys_info);
+  renderPorts(d.ports);
+  renderTemperatures(d.temperatures);
+  renderTopProcesses(d.top_processes);
+}
+
+function formatUptime(sec) {
+  if (!sec) return '';
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return d + 'д ' + h + 'ч';
+  if (h > 0) return h + 'ч ' + m + 'м';
+  return m + 'м';
+}
+
+function renderSysInfo(info) {
+  const el = document.getElementById('sys-info-bar');
+  if (!info) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = `
+    <div class="sys-tag"><span class="sys-icon">💻</span><span class="sys-val">${info.os || '—'}</span></div>
+    <div class="sys-tag"><span class="sys-icon">⚡</span><span class="sys-val">${info.cpu_model || '—'}</span></div>
+    <div class="sys-tag"><span class="sys-icon">🧮</span><span class="sys-val">${info.cpu_cores || '—'} ядер</span></div>
+    <div class="sys-tag"><span class="sys-icon">🧠</span><span class="sys-val">${info.total_ram ? info.total_ram.toFixed(1) + ' GB' : '—'}</span></div>
+    <div class="sys-tag"><span class="sys-icon">⏱</span><span class="sys-val">Uptime: ${formatUptime(info.uptime)}</span></div>
+  `;
+}
+
+function renderPorts(ports) {
+  const el = document.getElementById('ports-bar');
+  if (!ports || ports.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = ports.map(p => {
+    const cls = p.open ? 'open' : 'closed';
+    const latency = p.open ? `<span class="port-latency">${p.latency.toFixed(1)}ms</span>` : '';
+    return `<div class="port-badge ${cls}">
+      <span class="port-dot"></span>
+      ${p.name} :${p.port} ${latency}
+    </div>`;
+  }).join('');
+}
+
+function renderTemperatures(temps) {
+  const el = document.getElementById('temp-cards');
+  if (!temps || temps.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = temps.map(t => {
+    const color = t.current > 80 ? 'var(--red)' : t.current > 60 ? 'var(--yellow)' : 'var(--green)';
+    return `<div class="temp-badge">
+      <span>🌡</span>
+      <span class="temp-val" style="color:${color}">${t.current.toFixed(0)}°C</span>
+      <span class="temp-label">${t.label}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderTopProcesses(procs) {
+  const box = document.getElementById('procs-box');
+  const body = document.getElementById('procs-body');
+  if (!procs || procs.length === 0) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  body.innerHTML = procs.map(p => `
+    <tr>
+      <td style="color:var(--text-dim)">${p.pid}</td>
+      <td class="proc-name">${p.name}</td>
+      <td class="proc-cpu">${p.cpu_pct.toFixed(1)}%</td>
+      <td class="proc-mem">${p.mem_mb.toFixed(0)} MB</td>
+      <td style="color:var(--text-muted)">${p.mem_pct.toFixed(1)}%</td>
+    </tr>
+  `).join('');
+}
+
+function renderSidebar() {
+  const list = document.getElementById('hosts-list');
+  list.innerHTML = '';
+  Object.values(allHosts).forEach(h => {
+    const isOnline = h.online !== false;
+    const div = document.createElement('div');
+    div.className = 'host-item' + (h.host === activeHost ? ' active' : '');
+    div.innerHTML = `
+      <span class="host-dot ${isOnline ? 'on' : ''}"></span>
+      <span class="host-name">${h.host}</span>
+      <span class="host-cpu">${isOnline ? h.cpu_pct.toFixed(0) + '%' : 'offline'}</span>
+    `;
+    div.onclick = () => selectHost(h.host);
+    list.appendChild(div);
+  });
+}
+
+function selectHost(host) {
+  activeHost = host;
+  const d = allHosts[host];
+  if (d) updateCards(d);
+  renderSidebar();
+  [cpuChart, ramChart, netChart].forEach(clearChart);
+  loadHistory(1, document.querySelector('.range-btn.active'));
+  loadSpeedtest(24);
+}
+
+async function refreshHosts() {
+  const res = await fetch('/api/hosts');
+  const hosts = await res.json();
+  if (!hosts) return;
+  hosts.forEach(h => allHosts[h.host] = h);
+  if (!activeHost && hosts.length > 0) {
+    activeHost = hosts[0].host;
+    updateCards(hosts[0]);
+    loadHistory(1, document.querySelector('.range-btn.active'));
+    loadSpeedtest(24);
+  }
+  renderSidebar();
+}
+
+const ws = new WebSocket('ws://' + location.host + '/ws');
+const liveBadge = document.getElementById('live-badge');
+const liveText = document.getElementById('live-text');
+
+ws.onopen = () => {
+  liveBadge.classList.add('on');
+  liveText.textContent = 'online';
+};
+ws.onclose = () => {
+  liveBadge.classList.remove('on');
+  liveText.textContent = 'offline';
+};
+
+ws.onmessage = e => {
+  const d = JSON.parse(e.data);
+  const t = new Date(d.time).toLocaleTimeString('ru');
+
+  allHosts[d.host] = d;
+  renderSidebar();
+
+  if (d.host !== activeHost) return;
+  updateCards(d);
+
+  if (isLive) {
+    pushLive(cpuChart, t, d.cpu_pct);
+    pushLive(ramChart, t, d.ram_used_pct);
+    pushSpeedLive(netChart, t, d.net_recv_mbps, d.net_sent_mbps);
+  }
+};
+
+refreshHosts();
+setInterval(refreshHosts, 30000);
+
+// Auto-refresh history charts every 15s (if not in live mode)
+setInterval(() => {
+  if (!isLive && activeHost) {
+    loadHistory(currentHistoryHours, null);
+  }
+}, 15000);
+
+// Auto-refresh speedtest every 60s
+setInterval(() => {
+  if (activeHost) loadSpeedtest(24);
+}, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel — Правила</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg-card: #1a1d27;
+    --bg-sidebar: #161822;
+    --border: rgba(255,255,255,.06);
+    --border-hover: rgba(255,255,255,.12);
+    --text: #f4f4f5;
+    --text-muted: #a1a1aa;
+    --text-dim: #71717a;
+    --accent: #818cf8;
+    --accent-hover: #6366f1;
+    --accent-bg: rgba(129,140,248,.12);
+    --green: #34d399;
+    --green-bg: rgba(52,211,153,.12);
+    --yellow: #fbbf24;
+    --yellow-bg: rgba(251,191,36,.12);
+    --red: #f87171;
+    --red-bg: rgba(248,113,113,.12);
+    --radius: 14px;
+    --radius-sm: 10px;
+    --transition: .2s cubic-bezier(.4,0,.2,1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ─── Sidebar ─── */
+  .sidebar {
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 10px;
+    margin-bottom: 28px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #6366f1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 2px 12px rgba(99,102,241,.3);
+  }
+
+  .logo-text {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    background: linear-gradient(135deg, #e4e4e7, #a1a1aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+  }
+
+  .sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: background var(--transition), color var(--transition);
+  }
+
+  .sidebar-nav a:hover { background: rgba(255,255,255,.04); color: var(--text); }
+  .sidebar-nav a.active { background: var(--accent-bg); color: var(--accent); }
+  .sidebar-nav .spacer { flex: 1; }
+  .sidebar-nav a.exit { color: var(--red); }
+  .sidebar-nav a.exit:hover { background: var(--red-bg); }
+
+  .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+
+  /* ─── Main ─── */
+  .main {
+    padding: 28px 36px;
+    min-width: 0;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .page-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+
+  .btn-add {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition);
+    box-shadow: 0 2px 12px rgba(99,102,241,.3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-add:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(99,102,241,.4);
+  }
+
+  /* ─── Table Card ─── */
+  .table-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  th {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 14px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,.02);
+  }
+
+  td {
+    font-size: 14px;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,255,255,.03);
+    transition: background var(--transition);
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  .cpu  { background: var(--accent-bg); color: var(--accent); }
+  .ram  { background: var(--yellow-bg); color: var(--yellow); }
+  .disk { background: var(--red-bg); color: var(--red); }
+
+  .threshold { font-variant-numeric: tabular-nums; color: var(--text-muted); }
+
+  .actions { display: flex; gap: 6px; }
+
+  .btn-edit {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all var(--transition);
+  }
+
+  .btn-edit:hover {
+    background: rgba(255,255,255,.04);
+    border-color: var(--border-hover);
+    color: var(--text);
+  }
+
+  .btn-del {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(248,113,113,.15);
+    background: transparent;
+    cursor: pointer;
+    color: var(--red);
+    transition: all var(--transition);
+  }
+
+  .btn-del:hover {
+    background: var(--red-bg);
+    border-color: rgba(248,113,113,.25);
+  }
+
+  /* ─── Toggle ─── */
+  .toggle {
+    width: 40px;
+    height: 22px;
+    border-radius: 11px;
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    transition: background var(--transition);
+  }
+
+  .toggle-knob {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    top: 3px;
+    transition: left var(--transition);
+    box-shadow: 0 1px 4px rgba(0,0,0,.3);
+  }
+
+  /* ─── Modal ─── */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .overlay.show { display: flex; }
+
+  .modal {
+    background: var(--bg-card);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    padding: 32px;
+    width: 440px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.4);
+    animation: modalIn .2s ease-out;
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal h2 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin-bottom: 24px;
+  }
+
+  .form-row { margin-bottom: 18px; }
+
+  .form-row label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .form-row select,
+  .form-row input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    background: rgba(255,255,255,.03);
+    color: var(--text);
+    transition: all var(--transition);
+  }
+
+  .form-row select option {
+    background: var(--bg-card);
+    color: var(--text);
+  }
+
+  .form-row select:focus,
+  .form-row input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(129,140,248,.15);
+  }
+
+  .modal-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 28px;
+  }
+
+  .btn-cancel {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all var(--transition);
+  }
+
+  .btn-cancel:hover {
+    background: rgba(255,255,255,.04);
+    border-color: var(--border-hover);
+  }
+
+  .btn-save {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 24px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: #fff;
+    cursor: pointer;
+    transition: all var(--transition);
+    box-shadow: 0 2px 12px rgba(99,102,241,.3);
+  }
+
+  .btn-save:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(99,102,241,.4);
+  }
+
+  .empty-state {
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 4px; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .main { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🛡</div>
+      <span class="logo-text">Sentinel</span>
+    </div>
+    <div class="sidebar-nav">
+      <a href="/">
+        <span class="nav-icon">📊</span> Дашборд
+      </a>
+      <a href="/rules" class="active">
+        <span class="nav-icon">⚡</span> Правила алертов
+      </a>
+      <a href="/incidents">
+        <span class="nav-icon">🔔</span> История алертов
+      </a>
+      <div class="spacer"></div>
+      <a href="/logout" class="exit">
+        <span class="nav-icon">🚪</span> Выйти
+      </a>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="page-header">
+      <h1>⚡ Правила алертов</h1>
+      <button class="btn-add" onclick="openModal()">
+        <span>+</span> Добавить правило
+      </button>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Метрика</th>
+            <th>Порог</th>
+            <th>Замеров подряд</th>
+            <th>Хост</th>
+            <th>Включено</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody id="rules-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modal-title">Добавить правило</h2>
+    <input type="hidden" id="rule-id">
+    <div class="form-row">
+      <label>Метрика</label>
+      <select id="rule-metric">
+        <option value="cpu">CPU</option>
+        <option value="ram">RAM</option>
+        <option value="disk">Диск</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Порог (%)</label>
+      <input type="number" id="rule-threshold" min="1" max="100" value="80">
+    </div>
+    <div class="form-row">
+      <label>Замеров подряд выше порога</label>
+      <input type="number" id="rule-count" min="1" max="20" value="3">
+    </div>
+    <div class="form-row">
+      <label>Хост</label>
+      <input type="text" id="rule-host" value="my-pc">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-save" onclick="saveRule()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const metricLabels = { cpu: 'CPU', ram: 'RAM', disk: 'Диск' };
+
+async function loadRules() {
+  const res = await fetch('/api/rules');
+  const rules = await res.json();
+  const tbody = document.getElementById('rules-body');
+  tbody.innerHTML = '';
+  (rules || []).forEach(r => {
+    const tr = document.createElement('tr');
+    const toggleBg   = r.enabled ? 'var(--green)' : 'var(--text-dim)';
+    const toggleLeft = r.enabled ? '21px' : '3px';
+    tr.innerHTML = `
+      <td><span class="badge ${r.metric}">${metricLabels[r.metric] || r.metric}</span></td>
+      <td class="threshold">> ${r.threshold}%</td>
+      <td>${r.count}</td>
+      <td style="color:var(--text-muted)">${r.host}</td>
+      <td>
+        <div class="toggle" style="background:${toggleBg}" onclick="toggleRule(${r.id}, ${r.enabled}, '${r.metric}', ${r.threshold}, ${r.count}, '${r.host}')">
+          <span class="toggle-knob" style="left:${toggleLeft}"></span>
+        </div>
+      </td>
+      <td>
+        <div class="actions">
+          <button class="btn-edit" onclick='editRule(${JSON.stringify(r)})'>изменить</button>
+          <button class="btn-del"  onclick="deleteRule(${r.id})">удалить</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function openModal(rule) {
+  document.getElementById('modal-title').textContent = rule ? 'Изменить правило' : 'Добавить правило';
+  document.getElementById('rule-id').value        = rule ? rule.id        : '';
+  document.getElementById('rule-metric').value    = rule ? rule.metric    : 'cpu';
+  document.getElementById('rule-threshold').value = rule ? rule.threshold : 80;
+  document.getElementById('rule-count').value     = rule ? rule.count     : 3;
+  document.getElementById('rule-host').value      = rule ? rule.host      : 'my-pc';
+  document.getElementById('overlay').classList.add('show');
+}
+
+function editRule(rule) { openModal(rule); }
+function closeModal() { document.getElementById('overlay').classList.remove('show'); }
+
+async function saveRule() {
+  const id        = document.getElementById('rule-id').value;
+  const metric    = document.getElementById('rule-metric').value;
+  const threshold = parseFloat(document.getElementById('rule-threshold').value);
+  const count     = parseInt(document.getElementById('rule-count').value);
+  const host      = document.getElementById('rule-host').value;
+  if (id) {
+    await fetch('/api/rules/', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: parseInt(id), metric, threshold, count, host, enabled: true }),
+    });
+  } else {
+    await fetch('/api/rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ metric, threshold, count, host }),
+    });
+  }
+  closeModal();
+  loadRules();
+}
+
+async function deleteRule(id) {
+  if (!confirm('Удалить правило?')) return;
+  await fetch('/api/rules/', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  loadRules();
+}
+
+async function toggleRule(id, enabled, metric, threshold, count, host) {
+  await fetch('/api/rules/', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, metric, threshold, count, host, enabled: !enabled }),
+  });
+  loadRules();
+}
+
+loadRules();
+</script>
+</body>
+</html>
