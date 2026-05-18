@@ -102,15 +102,15 @@ func (db *postgresDB) InitRules(ctx context.Context) error {
 		return err
 	}
 	if count == 0 {
-		_, err = db.pool.Exec(ctx, `INSERT INTO rules (host, metric, threshold, count) VALUES ('my-pc', 'cpu', 60, 3)`)
+		_, err = db.pool.Exec(ctx, `INSERT INTO rules (host, metric, threshold, count, enabled) VALUES ('my-pc', 'cpu', 60, 3, true)`)
 		if err != nil {
 			return err
 		}
-		_, err = db.pool.Exec(ctx, `INSERT INTO rules (host, metric, threshold, count) VALUES ('my-pc', 'ram', 90, 1)`)
+		_, err = db.pool.Exec(ctx, `INSERT INTO rules (host, metric, threshold, count, enabled) VALUES ('my-pc', 'ram', 80, 1, true)`)
 		if err != nil {
 			return err
 		}
-		_, err = db.pool.Exec(ctx, `INSERT INTO rules (host, metric, threshold, count) VALUES ('my-pc', 'disk', 95, 1)`)
+		_, err = db.pool.Exec(ctx, `INSERT INTO rules (host, metric, threshold, count, enabled) VALUES ('my-pc', 'disk', 85, 1, true)`)
 		if err != nil {
 			return err
 		}

@@ -106,7 +106,29 @@ func (db *DB) InitRules(ctx context.Context) error {
 			count INTEGER,
 			enabled BOOLEAN DEFAULT 1
 		)`)
-	return err
+	if err != nil {
+		return err
+	}
+	var count int
+	err = db.conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM rules").Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		_, err = db.conn.ExecContext(ctx, "INSERT INTO rules (host, metric, threshold, count, enabled) VALUES ('my-pc', 'cpu', 60, 3, 1)")
+		if err != nil {
+			return err
+		}
+		_, err = db.conn.ExecContext(ctx, "INSERT INTO rules (host, metric, threshold, count, enabled) VALUES ('my-pc', 'ram', 80, 1, 1)")
+		if err != nil {
+			return err
+		}
+		_, err = db.conn.ExecContext(ctx, "INSERT INTO rules (host, metric, threshold, count, enabled) VALUES ('my-pc', 'disk', 85, 1, 1)")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (db *DB) GetRules(ctx context.Context) ([]models.Rule, error) {

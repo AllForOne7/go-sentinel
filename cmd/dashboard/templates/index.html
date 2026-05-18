@@ -689,22 +689,22 @@
   }
 
   /* ─── Processes Table ─── */
+  .procs-box h3 {
+    display: flex;
+    align-items: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 14px;
+    gap: 8px;
+  }
+
   .procs-box {
     background: var(--bg-card);
     border-radius: var(--radius);
     border: 1px solid var(--border);
     padding: 20px 24px;
     margin-bottom: 16px;
-  }
-
-  .procs-box h3 {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
   }
 
   .procs-table {
@@ -851,7 +851,10 @@
 
     <!-- Top Processes -->
     <div class="procs-box" id="procs-box" style="display:none">
-      <h3>🔥 Навантажені процеси</h3>
+      <h3>
+        🔥 Навантажені процеси
+        <button onclick="toggleProcesses()" id="procs-toggle" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;color:var(--text-muted);font-size:12px">Розгорнути ↕</button>
+      </h3>
       <table class="procs-table">
         <thead>
           <tr>
@@ -873,8 +876,8 @@
         <div class="chart-header">
           <h2><span class="chart-dot" style="background:var(--accent)"></span> CPU %</h2>
           <div class="range-btns">
-            <button class="range-btn active" onclick="loadHistory(1, this)">1ч</button>
-            <button class="range-btn" onclick="loadHistory(24, this)">24ч</button>
+            <button class="range-btn active" onclick="loadCpuHistory(1, this)">1ч</button>
+            <button class="range-btn" onclick="loadCpuHistory(24, this)">24ч</button>
             <button class="range-btn" onclick="switchLive(this)">live</button>
           </div>
         </div>
@@ -884,6 +887,11 @@
       <div class="chart-box">
         <div class="chart-header">
           <h2><span class="chart-dot" style="background:var(--yellow)"></span> RAM %</h2>
+          <div class="range-btns">
+            <button class="range-btn active" onclick="loadRamHistory(1, this)">1ч</button>
+            <button class="range-btn" onclick="loadRamHistory(24, this)">24ч</button>
+            <button class="range-btn" onclick="switchLive(this)">live</button>
+          </div>
         </div>
         <canvas id="ramChart"></canvas>
       </div>
@@ -891,6 +899,11 @@
       <div class="chart-box full-width">
         <div class="chart-header">
           <h2><span class="chart-dot" style="background:var(--green)"></span> Мережа MB/s</h2>
+          <div class="range-btns">
+            <button class="range-btn active" onclick="loadNetHistory(1, this)">1ч</button>
+            <button class="range-btn" onclick="loadNetHistory(24, this)">24ч</button>
+            <button class="range-btn" onclick="switchLive(this)">live</button>
+          </div>
         </div>
         <canvas id="netChart"></canvas>
       </div>
@@ -949,7 +962,7 @@ const MAX_LIVE = 40;
 let isLive = false;
 let activeHost = null;
 let allHosts = {};
-let currentHistoryHours = 1;
+let cpuHours = 1, ramHours = 1, netHours = 1;
 
 // ─── HTML escape ───
 function escHtml(s) {
@@ -1121,11 +1134,11 @@ function clearChart(chart) {
   chart.update();
 }
 
-async function loadHistory(hours, btn) {
+async function loadCpuHistory(hours, btn) {
   isLive = false;
-  currentHistoryHours = hours;
+  cpuHours = hours;
   if (btn) {
-    document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+    btn.parentElement.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
   if (!activeHost) return;
@@ -1134,7 +1147,35 @@ async function loadHistory(hours, btn) {
   if (!points || points.length === 0) return;
   const labels = points.map(p => p.time);
   setChartData(cpuChart, labels, points.map(p => p.cpu));
+}
+
+async function loadRamHistory(hours, btn) {
+  isLive = false;
+  ramHours = hours;
+  if (btn) {
+    btn.parentElement.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if (!activeHost) return;
+  const res = await fetch(`/api/history?hours=${hours}&host=${activeHost}`);
+  const points = await res.json();
+  if (!points || points.length === 0) return;
+  const labels = points.map(p => p.time);
   setChartData(ramChart, labels, points.map(p => p.ram));
+}
+
+async function loadNetHistory(hours, btn) {
+  isLive = false;
+  netHours = hours;
+  if (btn) {
+    btn.parentElement.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if (!activeHost) return;
+  const res = await fetch(`/api/history?hours=${hours}&host=${activeHost}`);
+  const points = await res.json();
+  if (!points || points.length === 0) return;
+  const labels = points.map(p => p.time);
   setSpeedChartData(netChart, labels, points.map(p => p.net_recv), points.map(p => p.net_sent));
 }
 
@@ -1176,8 +1217,10 @@ async function loadSpeedtest(hours) {
 
 function switchLive(btn) {
   isLive = true;
-  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) {
+    btn.parentElement.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
   [cpuChart, ramChart, netChart].forEach(clearChart);
 }
 
@@ -1284,12 +1327,21 @@ function renderTemperatures(temps) {
   }).join('');
 }
 
+let procsExpanded = false;
+let cachedProcs = [];
+
 function renderTopProcesses(procs) {
   const box = document.getElementById('procs-box');
   const body = document.getElementById('procs-body');
+  const toggle = document.getElementById('procs-toggle');
   if (!procs || procs.length === 0) { box.style.display = 'none'; return; }
   box.style.display = 'block';
-  body.innerHTML = procs.map(p => {
+  
+  cachedProcs = procs.slice(0, 20);
+  const displayProcs = procsExpanded ? cachedProcs : cachedProcs.slice(0, 5);
+  const count = cachedProcs.length;
+  
+  body.innerHTML = displayProcs.map(p => {
     const pidVal = (p.pid != null && !isNaN(p.pid)) ? Math.trunc(p.pid) : '—';
     return `<tr>
       <td style="color:var(--text-dim)">${escHtml(String(pidVal))}</td>
@@ -1300,6 +1352,15 @@ function renderTopProcesses(procs) {
        <td><button onclick="killProcess('${escHtml(activeHost || '')}', ${pidVal}, '${escHtml(p.name)}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--red);font-size:12px">❌ Завершити</button></td>
     </tr>`;
   }).join('');
+  
+  toggle.textContent = procsExpanded ? 'Згорнути ↑' : `Розгорнути ↕ (${count})`;
+}
+
+function toggleProcesses() {
+  procsExpanded = !procsExpanded;
+  if (cachedProcs.length > 0) {
+    renderTopProcesses(cachedProcs);
+  }
 }
 
 async function killProcess(host, pid, name) {
@@ -1346,7 +1407,9 @@ function selectHost(host) {
   if (d) updateCards(d);
   renderSidebar();
   [cpuChart, ramChart, netChart].forEach(clearChart);
-  loadHistory(1, document.querySelector('.range-btn.active'));
+  loadCpuHistory(1, null);
+  loadRamHistory(1, null);
+  loadNetHistory(1, null);
   loadSpeedtest(24);
 }
 
@@ -1409,10 +1472,12 @@ ws.onmessage = e => {
 refreshHosts();
 setInterval(refreshHosts, 30000);
 
-// Auto-refresh history charts every 15s (if not in live mode)
+// Auto-refresh individual charts every 15s (if not in live mode)
 setInterval(() => {
   if (!isLive && activeHost) {
-    loadHistory(currentHistoryHours, null);
+    loadCpuHistory(cpuHours, null);
+    loadRamHistory(ramHours, null);
+    loadNetHistory(netHours, null);
   }
 }, 15000);
 
