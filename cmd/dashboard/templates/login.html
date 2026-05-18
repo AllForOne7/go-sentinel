@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sentinel — Вход</title>
+<title>Sentinel — Вхід</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -179,20 +179,20 @@
     <div class="logo-icon">🛡</div>
     <span class="logo-text">Sentinel</span>
   </div>
-  <div class="subtitle">Система мониторинга</div>
+  <div class="subtitle">Система моніторингу</div>
   {{if .Error}}
   <div class="error show">{{.Error}}</div>
   {{end}}
   <form method="POST" action="/login">
     <div class="form-row">
-      <label>Логин</label>
+      <label>Логін</label>
       <input type="text" name="username" placeholder="admin" autofocus>
     </div>
     <div class="form-row">
       <label>Пароль</label>
       <input type="password" name="password" placeholder="••••••••">
     </div>
-    <button type="submit" class="btn">Войти</button>
+    <button type="submit" class="btn">Увійти</button>
   </form>
 </div>
 </body>

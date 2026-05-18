@@ -51,7 +51,7 @@ func newMuteStore(db storage.Storage) *muteStore {
 	}
 	if saved, err := db.GetMutes(context.Background()); err == nil {
 		m.cache = saved
-		slog.Info("загружено заглушений из БД", "count", len(saved))
+		slog.Info("завантажено заглушень з БД", "count", len(saved))
 	}
 	return m
 }
@@ -62,7 +62,7 @@ func (m *muteStore) mute(host string, duration time.Duration) {
 	m.cache[host] = until
 	m.mu.Unlock()
 	if err := m.db.SetMute(context.Background(), host, until); err != nil {
-		slog.Error("ошибка сохранения mute в БД", "host", host, "err", err)
+		slog.Error("помилка збереження mute в БД", "host", host, "err", err)
 	}
 }
 
@@ -71,7 +71,7 @@ func (m *muteStore) unmute(host string) {
 	delete(m.cache, host)
 	m.mu.Unlock()
 	if err := m.db.DeleteMute(context.Background(), host); err != nil {
-		slog.Error("ошибка удаления mute из БД", "host", host, "err", err)
+		slog.Error("помилка видалення mute з БД", "host", host, "err", err)
 	}
 }
 
@@ -99,17 +99,17 @@ func colorEmoji(value, warn, danger float64) string {
 
 func formatDuration(d time.Duration) string {
 	if d.Hours() >= 1 {
-		return fmt.Sprintf("%.0f ч %.0f мин", d.Hours(), d.Minutes()-d.Hours()*60)
+		return fmt.Sprintf("%.0f год %.0f хв", d.Hours(), d.Minutes()-d.Hours()*60)
 	}
 	if d.Minutes() >= 1 {
-		return fmt.Sprintf("%.0f мин", d.Minutes())
+		return fmt.Sprintf("%.0f хв", d.Minutes())
 	}
-	return fmt.Sprintf("%.0f сек", d.Seconds())
+	return fmt.Sprintf("%.0f с", d.Seconds())
 }
 
 func hostStatusText(e models.MetricEvent, online bool) string {
 	if !online {
-		return fmt.Sprintf("📊 <b>%s</b> · офлайн\n\nПоследние данные: %s",
+		return fmt.Sprintf("📊 <b>%s</b> · офлайн\n\nОстанні дані: %s",
 			e.Host, e.Time.Format("15:04:05 02.01.2006"))
 	}
 	ago := time.Since(e.Time)
@@ -117,20 +117,20 @@ func hostStatusText(e models.MetricEvent, online bool) string {
 	diskLines := ""
 	if len(e.Disks) > 0 {
 		for _, d := range e.Disks {
-			diskLines += fmt.Sprintf("%s %s: <b>%.1f%%</b> · св. %.1f GB\n",
+			diskLines += fmt.Sprintf("%s %s: <b>%.1f%%</b> · вільн. %.1f GB\n",
 				colorEmoji(d.UsedPct, 85, 95), d.Mount, d.UsedPct, d.FreeGB)
 		}
 	} else {
-		diskLines = fmt.Sprintf("%s Диск: <b>%.1f%%</b> · св. %.1f GB\n",
+		diskLines = fmt.Sprintf("%s Диск: <b>%.1f%%</b> · вільн. %.1f GB\n",
 			colorEmoji(e.DiskUsed, 85, 95), e.DiskUsed, e.DiskFreeGB)
 	}
 
 	return fmt.Sprintf(
-		"📊 <b>%s</b> · %s назад\n\n"+
+		"📊 <b>%s</b> · %s тому\n\n"+
 			"%s CPU:  <b>%.1f%%</b>\n"+
-			"%s RAM:  <b>%.1f%%</b> · св. %.1f GB\n"+
+			"%s RAM:  <b>%.1f%%</b> · вільн. %.1f GB\n"+
 			"%s"+
-			"🌐 Сеть: ↓%.2f MB/s  ↑%.2f MB/s",
+			"🌐 Мережа: ↓%.2f MB/s  ↑%.2f MB/s",
 		e.Host, formatDuration(ago),
 		colorEmoji(e.CPU, 50, 80), e.CPU,
 		colorEmoji(e.RAMUsed, 70, 90), e.RAMUsed, e.RAMFreeGB,
@@ -139,16 +139,16 @@ func hostStatusText(e models.MetricEvent, online bool) string {
 }
 
 func hostStatusButtons(host string, isMuted bool) tgbotapi.InlineKeyboardMarkup {
-	muteLabel := "🔕 Заглушить 30м"
+	muteLabel := "🔕 Заглушити 30хв"
 	muteData := fmt.Sprintf("%s%s:30", cmdMute, host)
 	if isMuted {
-		muteLabel = "🔔 Включить алерты"
+		muteLabel = "🔔 Увімкнути алерти"
 		muteData = cmdUnmute + host
 	}
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(muteLabel, muteData),
-			tgbotapi.NewInlineKeyboardButtonData("📋 Алерты", cmdAlerts),
+			tgbotapi.NewInlineKeyboardButtonData("📋 Алерти", cmdAlerts),
 		),
 	)
 }
@@ -161,7 +161,7 @@ func setupLogs() io.Closer {
 	os.MkdirAll(logDir, 0755)
 	logFile, err := logger.Init(filepath.Join(logDir, "bot.log"))
 	if err != nil {
-		slog.Error("ошибка инициализации логов", "err", err)
+		slog.Error("помилка ініціалізації логів", "err", err)
 		os.Exit(1)
 	}
 	return logFile
@@ -177,7 +177,7 @@ func setupDatabase() storage.Storage {
 	}
 	db, err := storage.NewStorage(context.Background(), dbURL)
 	if err != nil {
-		slog.Error("ошибка БД", "err", err)
+		slog.Error("помилка БД", "err", err)
 		os.Exit(1)
 	}
 	db.InitRules(context.Background())
@@ -191,26 +191,26 @@ func setupNats() *nats.Conn {
 	if natsURL == "" {
 		natsURL = "nats://localhost:4222"
 	}
-	slog.Info("подключение к NATS", "url", natsURL)
+	slog.Info("підключення до NATS", "url", natsURL)
 	nc, err := nats.Connect(natsURL,
 		nats.MaxReconnects(-1),
 		nats.ReconnectWait(5*time.Second),
 		nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
-			slog.Warn("NATS отключился", "err", err)
+			slog.Warn("NATS відключился", "err", err)
 		}),
 		nats.ReconnectHandler(func(nc *nats.Conn) {
-			slog.Info("NATS переподключился", "url", nc.ConnectedUrl())
+			slog.Info("NATS перепідключився", "url", nc.ConnectedUrl())
 		}),
 	)
 	if err != nil {
-		slog.Error("ошибка подключения к NATS", "url", natsURL, "err", err)
+		slog.Error("помилка підключення до NATS", "url", natsURL, "err", err)
 		os.Exit(1)
 	}
-	slog.Info("подключился к NATS", "url", natsURL)
+	slog.Info("підключився до NATS", "url", natsURL)
 
 	js, err := nc.JetStream()
 	if err != nil {
-		slog.Error("ошибка JetStream", "err", err)
+		slog.Error("помилка JetStream", "err", err)
 		os.Exit(1)
 	}
 
@@ -220,30 +220,30 @@ func setupNats() *nats.Conn {
 		MaxAge:   24 * time.Hour,
 	})
 	if err != nil && !strings.Contains(err.Error(), "stream already exists") {
-		slog.Error("ошибка создания стрима METRICS", "err", err)
+		slog.Error("помилка створення стріму METRICS", "err", err)
 		os.Exit(1)
 	}
-	slog.Info("стрим METRICS готов")
+	slog.Info("стрім METRICS готовий")
 
 	_, err = js.Subscribe("metrics.>", func(msg *nats.Msg) {
 		var e models.MetricEvent
 		if err := json.Unmarshal(msg.Data, &e); err != nil {
-			slog.Error("ошибка парсинга метрики", "err", err)
+			slog.Error("помилка парсингу метрики", "err", err)
 			msg.Ack()
 			return
 		}
 		store.Set(e)
-		slog.Debug("метрика сохранена в кэш", "host", e.Host, "cpu", e.CPU)
+		slog.Debug("метрику збережено в кеш", "host", e.Host, "cpu", e.CPU)
 		msg.Ack()
 	}, nats.Durable("bot"), nats.DeliverNew())
 	if err != nil {
 		if strings.Contains(err.Error(), "consumer name already in use") || strings.Contains(err.Error(), "already exists") {
-			slog.Warn("consumer 'bot' уже существует, удаляем и пересоздаём...")
+			slog.Warn("consumer 'bot' вже існує, видаляємо та перестворюємо...")
 			_ = js.DeleteConsumer("METRICS", "bot")
 			_, err2 := js.Subscribe("metrics.>", func(msg *nats.Msg) {
 				var e models.MetricEvent
 				if err := json.Unmarshal(msg.Data, &e); err != nil {
-					slog.Error("ошибка парсинга метрики", "err", err)
+					slog.Error("помилка парсингу метрики", "err", err)
 					msg.Ack()
 					return
 				}
@@ -251,16 +251,16 @@ func setupNats() *nats.Conn {
 				msg.Ack()
 			}, nats.Durable("bot"), nats.DeliverNew())
 			if err2 != nil {
-				slog.Error("не удалось создать подписку после пересоздания", "err", err2)
+				slog.Error("не вдалося створити підписку після перестворення", "err", err2)
 				os.Exit(1)
 			}
-			slog.Info("подписка на metrics пересоздана")
+			slog.Info("підписку на metrics перестворено")
 		} else {
-			slog.Error("ошибка подписки на metrics", "err", err)
+			slog.Error("помилка підписки на metrics", "err", err)
 			os.Exit(1)
 		}
 	}
-	slog.Info("подписка на metrics создана")
+	slog.Info("підписку на metrics створено")
 	return nc
 }
 
@@ -275,32 +275,32 @@ func main() {
 	}()
 
 	godotenv.Load()
-	slog.Info("загрузка .env завершена")
+	slog.Info("завантаження .env завершено")
 
 	logFile := setupLogs()
 	defer logFile.Close()
-	slog.Info("логи инициализированы")
+	slog.Info("логи ініціалізовано")
 
 	db := setupDatabase()
 	defer db.Close()
-	slog.Info("БД подключена")
+	slog.Info("БД підключена")
 
 	mutes = newMuteStore(db)
-	slog.Info("muteStore инициализирован")
+	slog.Info("muteStore ініціалізовано")
 
 	store = hostcache.New()
-	slog.Info("store инициализирован", "store_ptr", fmt.Sprintf("%p", store))
+	slog.Info("store ініціалізовано", "store_ptr", fmt.Sprintf("%p", store))
 
 	nc := setupNats()
 	defer nc.Close()
-	slog.Info("NATS подключен")
+	slog.Info("NATS підключено")
 
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_TOKEN"))
 	if err != nil {
-		slog.Error("ошибка создания бота", "err", err)
+		slog.Error("помилка створення бота", "err", err)
 		return
 	}
-	slog.Info("бот создан", "username", bot.Self.UserName)
+	slog.Info("бота створено", "username", bot.Self.UserName)
 
 	allowedIDs := parseAllowedIDs()
 
@@ -322,7 +322,7 @@ func main() {
 				handleMessage(bot, update, db, nc, allowedIDs)
 			}
 		case <-quit:
-			slog.Info("бот останавливается...")
+			slog.Info("бот зупиняється...")
 			bot.StopReceivingUpdates()
 			return
 		}
@@ -344,12 +344,12 @@ func parseAllowedIDs() map[int64]bool {
 func handleMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, db storage.Storage, nc *nats.Conn, allowedIDs map[int64]bool) {
 	chatID := update.Message.Chat.ID
 	if len(allowedIDs) > 0 && !allowedIDs[chatID] {
-		bot.Send(tgbotapi.NewMessage(chatID, "⛔ Доступ запрещён"))
+		bot.Send(tgbotapi.NewMessage(chatID, "⛔ Доступ заборонений"))
 		return
 	}
 
 	text := update.Message.Text
-	slog.Info("команда получена", "text", text, "user", update.Message.From.UserName)
+	slog.Info("команду отримано", "text", text, "user", update.Message.From.UserName)
 
 	switch {
 	case text == "/start" || text == "/help":
@@ -392,14 +392,14 @@ func handleMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, db storage.Stor
 func handleHelp(bot *tgbotapi.BotAPI, chatID int64) {
 	text := `🛡 <b>Sentinel Monitor Bot</b>
 
-<b>Команды:</b>
-/hosts — список всех хостов
+<b>Команди:</b>
+/hosts — список усіх хостів
 /status &lt;хост&gt; — метрики хоста
-/top &lt;хост&gt; — список топ процессов
-/alerts — активные инциденты
-/speedtest &lt;хост&gt; — последний speedtest
-/mute &lt;хост&gt; &lt;минуты&gt; — заглушить алерты
-/help — эта справка`
+/top &lt;хост&gt; — список топ процесів
+/alerts — активні інциденти
+/speedtest &lt;хост&gt; — останній speedtest
+/mute &lt;хост&gt; &lt;хвилини&gt; — заглушити алерти
+/help — ця довідка`
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = modeHTML
 	bot.Send(msg)
@@ -408,11 +408,11 @@ func handleHelp(bot *tgbotapi.BotAPI, chatID int64) {
 func handleHosts(bot *tgbotapi.BotAPI, chatID int64) {
 	hosts := store.GetAll()
 	if len(hosts) == 0 {
-		bot.Send(tgbotapi.NewMessage(chatID, "Нет подключённых хостов"))
+		bot.Send(tgbotapi.NewMessage(chatID, "Немає підключених хостів"))
 		return
 	}
 
-	text := "🖥 <b>Хосты</b>\n\n"
+	text := "🖥 <b>Хости</b>\n\n"
 	var buttons [][]tgbotapi.InlineKeyboardButton
 
 	for _, h := range hosts {
@@ -446,7 +446,7 @@ func handleHosts(bot *tgbotapi.BotAPI, chatID int64) {
 func handleStatus(bot *tgbotapi.BotAPI, chatID int64, host string) {
 	e, ok := store.Get(host)
 	if !ok {
-		bot.Send(tgbotapi.NewMessage(chatID, "Хост <b>"+host+"</b> не найден"))
+		bot.Send(tgbotapi.NewMessage(chatID, "Хост <b>"+host+"</b> не знайдено"))
 		return
 	}
 	online := store.IsOnline(host)
@@ -461,7 +461,7 @@ func handleStatus(bot *tgbotapi.BotAPI, chatID int64, host string) {
 func handleAlerts(bot *tgbotapi.BotAPI, chatID int64, db storage.Storage) {
 	incidents, err := db.GetIncidents(context.Background(), 24)
 	if err != nil {
-		bot.Send(tgbotapi.NewMessage(chatID, "Ошибка получения инцидентов"))
+		bot.Send(tgbotapi.NewMessage(chatID, "Помилка отримання інцидентів"))
 		return
 	}
 
@@ -473,16 +473,16 @@ func handleAlerts(bot *tgbotapi.BotAPI, chatID int64, db storage.Storage) {
 	}
 
 	if len(active) == 0 {
-		msg := tgbotapi.NewMessage(chatID, "✅ <b>Активных инцидентов нет</b>")
+		msg := tgbotapi.NewMessage(chatID, "✅ <b>Активних інцидентів немає</b>")
 		msg.ParseMode = modeHTML
 		bot.Send(msg)
 		return
 	}
 
-	text := fmt.Sprintf("🔔 <b>Активные инциденты (%d)</b>\n\n", len(active))
+	text := fmt.Sprintf("🔔 <b>Активні інциденти (%d)</b>\n\n", len(active))
 	for _, inc := range active {
 		duration := time.Since(inc.StartedAt)
-		text += fmt.Sprintf("⚠️ <b>%s</b> · %s %.1f%% (порог %.0f%%)\n ⏱ %s\n\n",
+		text += fmt.Sprintf("⚠️ <b>%s</b> · %s %.1f%% (поріг %.0f%%)\n ⏱ %s\n\n",
 			inc.Host, strings.ToUpper(inc.Metric), inc.Value, inc.Threshold, formatDuration(duration))
 	}
 
@@ -494,7 +494,7 @@ func handleAlerts(bot *tgbotapi.BotAPI, chatID int64, db storage.Storage) {
 func handleSpeedtest(bot *tgbotapi.BotAPI, chatID int64, host string, db storage.Storage) {
 	results, err := db.GetSpeedtestHistory(context.Background(), host, 24)
 	if err != nil || len(results) == 0 {
-		bot.Send(tgbotapi.NewMessage(chatID, "Нет данных speedtest для "+host))
+		bot.Send(tgbotapi.NewMessage(chatID, "Немає даних speedtest для "+host))
 		return
 	}
 
@@ -510,14 +510,14 @@ func handleSpeedtest(bot *tgbotapi.BotAPI, chatID int64, host string, db storage
 func handleMute(bot *tgbotapi.BotAPI, chatID int64, host, minStr string) {
 	mins, err := strconv.Atoi(minStr)
 	if err != nil || mins <= 0 {
-		bot.Send(tgbotapi.NewMessage(chatID, "Укажите минуты (число > 0)"))
+		bot.Send(tgbotapi.NewMessage(chatID, "Вкажіть хвилини (число > 0)"))
 		return
 	}
 
 	duration := time.Duration(mins) * time.Minute
 	mutes.mute(host, duration)
 
-	text := fmt.Sprintf("🔕 Алерты для <b>%s</b> заглушены на %d мин.", host, mins)
+	text := fmt.Sprintf("🔕 Алерти для <b>%s</b> заглушено на %d хв.", host, mins)
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = modeHTML
 	bot.Send(msg)
@@ -526,16 +526,16 @@ func handleMute(bot *tgbotapi.BotAPI, chatID int64, host, minStr string) {
 func handleTop(bot *tgbotapi.BotAPI, chatID int64, host string, nc *nats.Conn) {
 	e, ok := store.Get(host)
 	if !ok {
-		bot.Send(tgbotapi.NewMessage(chatID, "Хост <b>"+host+"</b> не найден"))
+		bot.Send(tgbotapi.NewMessage(chatID, "Хост <b>"+host+"</b> не знайдено"))
 		return
 	}
 
 	if len(e.TopProcesses) == 0 {
-		bot.Send(tgbotapi.NewMessage(chatID, "Нет данных о процессах для "+host))
+		bot.Send(tgbotapi.NewMessage(chatID, "Немає даних про процеси для "+host))
 		return
 	}
 
-	text := fmt.Sprintf("📋 <b>Топ процессы на %s</b>\n\n", host)
+	text := fmt.Sprintf("📋 <b>Топ процеси на %s</b>\n\n", host)
 	var rows [][]tgbotapi.InlineKeyboardButton
 
 	for _, p := range e.TopProcesses {
@@ -559,7 +559,7 @@ func handleTop(bot *tgbotapi.BotAPI, chatID int64, host string, nc *nats.Conn) {
 func handleKill(bot *tgbotapi.BotAPI, cb *tgbotapi.CallbackQuery, host string, pidStr string, nc *nats.Conn) {
 	pid, err := strconv.Atoi(pidStr)
 	if err != nil {
-		bot.Request(tgbotapi.NewCallback(cb.ID, "Неверный PID"))
+		bot.Request(tgbotapi.NewCallback(cb.ID, "Невірний PID"))
 		return
 	}
 
@@ -571,12 +571,12 @@ func handleKill(bot *tgbotapi.BotAPI, cb *tgbotapi.CallbackQuery, host string, p
 	topic := fmt.Sprintf("commands.%s", host)
 
 	if err := nc.Publish(topic, data); err != nil {
-		slog.Error("ошибка отправки команды KILL", "err", err)
-		bot.Request(tgbotapi.NewCallback(cb.ID, "Ошибка отправки команды"))
+		slog.Error("помилка відправки команди KILL", "err", err)
+		bot.Request(tgbotapi.NewCallback(cb.ID, "Помилка відправлення команди"))
 		return
 	}
 
-	bot.Request(tgbotapi.NewCallback(cb.ID, fmt.Sprintf("Команду на завершение процесу [%d] відправлено на %s", pid, host)))
+	bot.Request(tgbotapi.NewCallback(cb.ID, fmt.Sprintf("Команду на завершення процесу [%d] відправлено на %s", pid, host)))
 }
 
 func handleCallback(bot *tgbotapi.BotAPI, cb *tgbotapi.CallbackQuery, db storage.Storage, nc *nats.Conn, allowedIDs map[int64]bool) {
@@ -601,7 +601,7 @@ func handleCallback(bot *tgbotapi.BotAPI, cb *tgbotapi.CallbackQuery, db storage
 		bot.Send(tgbotapi.NewCallback(cb.ID, ""))
 		host := strings.TrimPrefix(data, cmdUnmute)
 		mutes.unmute(host)
-		bot.Send(tgbotapi.NewMessage(chatID, "🔔 Алерты для <b>"+host+"</b> включены"))
+		bot.Send(tgbotapi.NewMessage(chatID, "🔔 Алерти для <b>"+host+"</b> увімкнено"))
 	case data == cmdAlerts:
 		bot.Send(tgbotapi.NewCallback(cb.ID, ""))
 		handleAlerts(bot, chatID, db)

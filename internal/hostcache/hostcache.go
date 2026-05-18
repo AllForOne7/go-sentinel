@@ -23,12 +23,40 @@ func New() *Cache {
 	}
 }
 
+// SetWithMerge обновляет метрики, но если в новом событии SysInfo (или Ports/Temperatures/TopProcesses) пустое — берёт старое из кэша.
+func (c *Cache) SetWithMerge(e models.MetricEvent) {
+    c.mu.Lock()
+    defer c.mu.Unlock()
+
+    if old, ok := c.hosts[e.Host]; ok {
+        // Сохраняем старую SysInfo, если новая пустая
+        if e.SysInfo == nil && old.SysInfo != nil {
+            e.SysInfo = old.SysInfo
+        }
+        // Сохраняем старые порты, если новые пустые
+        if len(e.Ports) == 0 && len(old.Ports) > 0 {
+            e.Ports = old.Ports
+        }
+        // Сохраняем старые температуры, если новые пустые
+        if len(e.Temperatures) == 0 && len(old.Temperatures) > 0 {
+            e.Temperatures = old.Temperatures
+        }
+        // Сохраняем старые процессы, если новые пустые
+        if len(e.TopProcesses) == 0 && len(old.TopProcesses) > 0 {
+            e.TopProcesses = old.TopProcesses
+        }
+    }
+    c.hosts[e.Host] = e
+    c.lastSeen[e.Host] = time.Now()
+}
+
 // Set обновляет метрики хоста и время последнего обновления.
+// Устаревший метод, используйте SetWithMerge для корректного кэширования SysInfo.
 func (c *Cache) Set(e models.MetricEvent) {
-	c.mu.Lock()
-	c.hosts[e.Host] = e
-	c.lastSeen[e.Host] = time.Now()
-	c.mu.Unlock()
+    c.mu.Lock()
+    c.hosts[e.Host] = e
+    c.lastSeen[e.Host] = time.Now()
+    c.mu.Unlock()
 }
 
 // Get возвращает последние метрики хоста. Второй аргумент false если хост не найден.

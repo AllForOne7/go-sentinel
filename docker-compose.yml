@@ -121,6 +121,6 @@ services:
 
 volumes:
   nats_data:
-  db_data:      # Для SQLite (если понадобится переключиться назад)
+  db_data: # Для SQLite (если понадобится переключиться назад)
   logs_data:
-  pg_data:      # Для PostgreSQL (основное хранилище)
+  pg_data: # Для PostgreSQL (основное хранилище)

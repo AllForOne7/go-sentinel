@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sentinel — История алертов</title>
+<title>Sentinel — Історія сповіщень</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -349,44 +349,44 @@
     </div>
     <div class="sidebar-nav">
       <a href="/">
-        <span class="nav-icon">📊</span> Дашборд
+        <span class="nav-icon">📊</span> Моніторинг
       </a>
       <a href="/rules">
-        <span class="nav-icon">⚡</span> Правила алертов
+        <span class="nav-icon">⚡</span> Правила сповіщень
       </a>
       <a href="/incidents" class="active">
-        <span class="nav-icon">🔔</span> История алертов
+        <span class="nav-icon">🔔</span> Історія сповіщень
       </a>
       <div class="spacer"></div>
       <a href="/logout" class="exit">
-        <span class="nav-icon">🚪</span> Выйти
+        <span class="nav-icon">🚪</span> Вийти
       </a>
     </div>
   </div>
 
   <div class="main">
     <div class="page-header">
-      <h1>🔔 История алертов</h1>
+      <h1>🔔 Історія сповіщень</h1>
       <div class="range-btns">
-        <button class="range-btn active" onclick="load(24, this)">24 часа</button>
-        <button class="range-btn" onclick="load(168, this)">7 дней</button>
+        <button class="range-btn active" onclick="load(24, this)">24 години</button>
+        <button class="range-btn" onclick="load(168, this)">7 днів</button>
       </div>
     </div>
 
     <div class="stats">
       <div class="stat">
         <div class="stat-icon">📋</div>
-        <div class="stat-label">Всего инцидентов</div>
+        <div class="stat-label">Всього інцидентів</div>
         <div class="stat-value" id="stat-total">—</div>
       </div>
       <div class="stat">
         <div class="stat-icon">🔴</div>
-        <div class="stat-label">Активных сейчас</div>
+        <div class="stat-label">Активних зараз</div>
         <div class="stat-value" id="stat-active" style="color:var(--red)">—</div>
       </div>
       <div class="stat">
         <div class="stat-icon">✅</div>
-        <div class="stat-label">Решено</div>
+        <div class="stat-label">Вирішено</div>
         <div class="stat-value" id="stat-resolved" style="color:var(--green)">—</div>
       </div>
     </div>
@@ -397,11 +397,11 @@
           <tr>
             <th>Метрика</th>
             <th>Хост</th>
-            <th>Значение</th>
-            <th>Порог</th>
-        <th>Начало</th>
-        <th>Закрыт</th>
-        <th>Длительность</th>
+            <th>Значення</th>
+            <th>Поріг</th>
+        <th>Початок</th>
+        <th>Закрито</th>
+        <th>Тривалість</th>
         <th>Статус</th>
           </tr>
         </thead>
@@ -409,7 +409,7 @@
       </table>
       <div class="empty-state" id="empty" style="display:none">
         <div class="empty-icon">🎉</div>
-        Нет инцидентов за выбранный период
+        Немає інцидентів за вибраний період
       </div>
     </div>
   </div>
@@ -445,13 +445,13 @@ async function load(hours, btn) {
   document.getElementById('stat-resolved').textContent = resolved;
 
   tbody.innerHTML = incidents.map(inc => {
-    const started = new Date(inc.started_at).toLocaleString('ru');
+    const started = new Date(inc.started_at).toLocaleString('uk');
     const resolved = inc.resolved_at
-      ? new Date(inc.resolved_at).toLocaleString('ru')
+      ? new Date(inc.resolved_at).toLocaleString('uk')
       : '—';
     const status  = inc.resolved_at
-      ? '<span class="status-resolved">✓ решено</span>'
-      : '<span class="status-active">● активен</span>';
+      ? '<span class="status-resolved">✓ вирішено</span>'
+      : '<span class="status-active">● активний</span>';
     return `
       <tr>
         <td><span class="badge ${inc.metric}">${metricLabels[inc.metric] || inc.metric}</span></td>

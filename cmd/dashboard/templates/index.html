@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sentinel — Мониторинг</title>
+<title>Sentinel — Моніторинг</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -781,21 +781,21 @@
       <span class="logo-text">Sentinel</span>
     </div>
 
-    <div class="sidebar-section">Хосты</div>
+    <div class="sidebar-section">Хости</div>
     <div id="hosts-list"></div>
 
     <div class="sidebar-nav">
       <a href="/" class="active">
-        <span class="nav-icon">📊</span> Дашборд
+        <span class="nav-icon">📊</span> Моніторинг
       </a>
       <a href="/rules">
-        <span class="nav-icon">⚡</span> Правила алертов
+        <span class="nav-icon">⚡</span> Правила сповіщень
       </a>
       <a href="/incidents">
-        <span class="nav-icon">🔔</span> История алертов
+        <span class="nav-icon">🔔</span> Історія сповіщень
       </a>
       <a href="/logout" class="exit">
-        <span class="nav-icon">🚪</span> Выйти
+        <span class="nav-icon">🚪</span> Вийти
       </a>
     </div>
   </div>
@@ -804,7 +804,7 @@
   <div class="main">
     <div class="top-bar">
       <div class="page-title">
-        <h1 id="hostname">Ожидаю данные...</h1>
+        <h1 id="hostname">Очікую дані...</h1>
       </div>
       <div class="live-badge" id="live-badge">
         <span class="live-dot"></span>
@@ -825,22 +825,22 @@
     <div class="cards">
       <div class="card cpu">
         <div class="card-icon">⚡</div>
-        <div class="card-label">Процессор</div>
+        <div class="card-label">Процесор</div>
         <div class="card-value" id="cpu">—</div>
         <div class="card-sub">
           <span class="status-dot" id="cpu-dot" style="background:var(--text-dim)"></span>
-          <span id="cpu-status">нет данных</span>
+          <span id="cpu-status">немає даних</span>
         </div>
       </div>
       <div class="card ram">
         <div class="card-icon">🧠</div>
-        <div class="card-label">Память</div>
+        <div class="card-label">Пам'ять</div>
         <div class="card-value" id="ram">—</div>
-        <div class="card-sub" id="ram-sub">нет данных</div>
+        <div class="card-sub" id="ram-sub">немає даних</div>
       </div>
       <div class="card net">
         <div class="card-icon">🌐</div>
-        <div class="card-label">Сеть</div>
+        <div class="card-label">Мережа</div>
         <div class="card-value" id="net-recv" style="font-size:28px">—</div>
         <div class="card-sub" id="net-sent">—</div>
       </div>
@@ -851,20 +851,20 @@
 
     <!-- Top Processes -->
     <div class="procs-box" id="procs-box" style="display:none">
-      <h3>🔥 Тяжёлые процессы</h3>
-<table class="procs-table">
-         <thead>
-           <tr>
-             <th>PID</th>
-             <th>Процесс</th>
-             <th>CPU %</th>
-             <th>RAM MB</th>
-             <th>RAM %</th>
-             <th>Действие</th>
-           </tr>
-         </thead>
-         <tbody id="procs-body"></tbody>
-       </table>
+      <h3>🔥 Навантажені процеси</h3>
+      <table class="procs-table">
+        <thead>
+          <tr>
+            <th>PID</th>
+            <th>Процес</th>
+            <th>CPU %</th>
+            <th>RAM MB</th>
+            <th>RAM %</th>
+            <th>Дія</th>
+          </tr>
+        </thead>
+        <tbody id="procs-body"></tbody>
+      </table>
     </div>
 
     <!-- Charts -->
@@ -890,7 +890,7 @@
 
       <div class="chart-box full-width">
         <div class="chart-header">
-          <h2><span class="chart-dot" style="background:var(--green)"></span> Сеть MB/s</h2>
+          <h2><span class="chart-dot" style="background:var(--green)"></span> Мережа MB/s</h2>
         </div>
         <canvas id="netChart"></canvas>
       </div>
@@ -904,25 +904,25 @@
       </div>
 
       <div id="speedtest-empty" class="empty-state">
-        Нет данных — первый замер через минуту после старта агента
+        Немає даних — перший замір через хвилину після запуску агента
       </div>
 
       <div id="speedtest-content" style="display:none">
         <div class="speedtest-grid">
           <div class="speedtest-item">
-            <div class="speedtest-label">↓ Download</div>
+            <div class="speedtest-label">↓ Завантаження</div>
             <div class="speedtest-value" style="color:var(--green)">
               <span id="st-down">—</span><span class="speedtest-unit">Mbps</span>
             </div>
           </div>
           <div class="speedtest-item">
-            <div class="speedtest-label">↑ Upload</div>
+            <div class="speedtest-label">↑ Відвантаження</div>
             <div class="speedtest-value" style="color:var(--accent)">
               <span id="st-up">—</span><span class="speedtest-unit">Mbps</span>
             </div>
           </div>
           <div class="speedtest-item">
-            <div class="speedtest-label">Ping</div>
+            <div class="speedtest-label">Пінг</div>
             <div class="speedtest-value" style="color:var(--yellow)">
               <span id="st-ping">—</span><span class="speedtest-unit">ms</span>
             </div>
@@ -932,7 +932,7 @@
         <div id="st-server" class="st-server"></div>
 
         <div class="st-grid st-header">
-          <span>Время</span>
+          <span>Час</span>
           <span>↓ Mbps</span>
           <span>↑ Mbps</span>
           <span>Ping</span>
@@ -950,6 +950,13 @@ let isLive = false;
 let activeHost = null;
 let allHosts = {};
 let currentHistoryHours = 1;
+
+// ─── HTML escape ───
+function escHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 // ─── Safe number formatting ───
 function safeToFixed(value, digits) {
@@ -1036,7 +1043,7 @@ function makeSpeedChart(id, colors, labels) {
 
 const cpuChart = makeChart('cpuChart', '#818cf8');
 const ramChart = makeChart('ramChart', '#fbbf24');
-const netChart = makeSpeedChart('netChart', ['#34d399', '#818cf8'], ['↓ получено', '↑ отправлено']);
+const netChart = makeSpeedChart('netChart', ['#34d399', '#818cf8'], ['↓ отримано', '↑ надіслано']);
 
 // ─── Disk cards ───
 function renderDiskCards(disks) {
@@ -1056,17 +1063,15 @@ function renderDiskCards(disks) {
     const usedGB = totalGB - freeGB;
     return `
       <div class="disk-card">
-        <div class="card-label">💾 Диск ${d.mount}</div>
-        <div class="disk-info">
-          <div class="card-value ${valClass}">${safeToFixed(usedPct, 1)}%</div>
-          <div class="card-sub" style="margin-top:0">${usedGB.toFixed(1)} / ${totalGB.toFixed(1)} GB</div>
-        </div>
+        <div class="card-label">💾 Диск ${escHtml(d.mount)}</div>
+        <div class="card-value ${valClass}">${safeToFixed(usedPct, 1)}%</div>
+        <div class="card-sub" style="margin-top:0">${safeToFixed(usedGB,1)} / ${safeToFixed(totalGB,1)} GB</div>
         <div class="disk-bar-wrap">
           <div class="disk-bar ${barClass}" style="width:${Math.min(usedPct,100)}%"></div>
         </div>
         <div class="card-sub" style="justify-content:space-between">
-          <span>Занято ${usedGB.toFixed(1)} GB</span>
-          <span>Свободно ${freeGB.toFixed(1)} GB</span>
+          <span>Зайнято ${safeToFixed(usedGB,1)} GB</span>
+          <span>Вільно ${safeToFixed(freeGB,1)} GB</span>
         </div>
       </div>`;
   }).join('');
@@ -1156,12 +1161,12 @@ async function loadSpeedtest(hours) {
   document.getElementById('st-ping').textContent  = safeToFixed(last.ping_ms, 0);
   document.getElementById('st-server').textContent = '🌍 Сервер: ' + last.server;
   document.getElementById('speedtest-time').textContent =
-    'последний замер: ' + new Date(last.time).toLocaleTimeString('ru');
+    'останній замір: ' + new Date(last.time).toLocaleTimeString('uk');
 
   const history = [...results].reverse().slice(0, 10);
   document.getElementById('st-history').innerHTML = history.map(r => `
     <div class="st-grid st-row">
-      <span class="st-time">${new Date(r.time).toLocaleTimeString('ru')}</span>
+      <span class="st-time">${new Date(r.time).toLocaleTimeString('uk')}</span>
       <span class="st-val">${safeToFixed(r.download_mbps, 1)}</span>
       <span class="st-val">${safeToFixed(r.upload_mbps, 1)}</span>
       <span class="st-val">${safeToFixed(r.ping_ms, 0)} ms</span>
@@ -1184,15 +1189,16 @@ function colorFor(v, warn, danger) {
 }
 
 function updateCards(d) {
-  document.getElementById('hostname').textContent = d.host;
+  if (!d || !d.host) return;
+  document.getElementById('hostname').textContent = escHtml(d.host);
 
+  const cpuVal = (d.cpu_pct != null && !isNaN(d.cpu_pct)) ? d.cpu_pct : 0;
   const cpuEl = document.getElementById('cpu');
-  cpuEl.textContent = safeToFixed(d.cpu_pct, 1) + '%';
-  cpuEl.className = 'card-value ' + colorFor(d.cpu_pct, 50, 80);
+  cpuEl.textContent = safeToFixed(cpuVal, 1) + '%';
+  cpuEl.className = 'card-value ' + colorFor(cpuVal, 50, 80);
 
   const cpuDot = document.getElementById('cpu-dot');
   const cpuStatus = document.getElementById('cpu-status');
-  const cpuVal = d.cpu_pct != null ? d.cpu_pct : 0;
   if (cpuVal > 80) {
     cpuDot.style.background = 'var(--red)';
     cpuStatus.textContent = 'перегрузка';
@@ -1207,14 +1213,17 @@ function updateCards(d) {
     cpuStatus.style.color = 'var(--green)';
   }
 
+  const ramUsed = (d.ram_used_pct != null && !isNaN(d.ram_used_pct)) ? d.ram_used_pct : 0;
   const ramEl = document.getElementById('ram');
-  ramEl.textContent = safeToFixed(d.ram_used_pct, 0) + '%';
-  ramEl.className = 'card-value ' + colorFor(d.ram_used_pct, 70, 90);
-  const ramFree = d.ram_free_gb != null ? d.ram_free_gb : 0;
-  document.getElementById('ram-sub').textContent = 'свободно ' + ramFree.toFixed(1) + ' GB';
+  ramEl.textContent = safeToFixed(ramUsed, 0) + '%';
+  ramEl.className = 'card-value ' + colorFor(ramUsed, 70, 90);
+  const ramFree = (d.ram_free_gb != null && !isNaN(d.ram_free_gb)) ? d.ram_free_gb : 0;
+  document.getElementById('ram-sub').textContent = 'свободно ' + safeToFixed(ramFree, 1) + ' GB';
 
-  document.getElementById('net-recv').textContent = '↓ ' + safeToFixed(d.net_recv_mbps, 2) + ' MB/s';
-  document.getElementById('net-sent').textContent = '↑ ' + safeToFixed(d.net_sent_mbps, 2) + ' MB/s';
+  const recv = (d.net_recv_mbps != null && !isNaN(d.net_recv_mbps)) ? d.net_recv_mbps : 0;
+  const sent = (d.net_sent_mbps != null && !isNaN(d.net_sent_mbps)) ? d.net_sent_mbps : 0;
+  document.getElementById('net-recv').textContent = '↓ ' + safeToFixed(recv, 2) + ' MB/s';
+  document.getElementById('net-sent').textContent = '↑ ' + safeToFixed(sent, 2) + ' MB/s';
 
   renderDiskCards(d.disks);
   renderSysInfo(d.sys_info);
@@ -1224,13 +1233,15 @@ function updateCards(d) {
 }
 
 function formatUptime(sec) {
-  if (!sec) return '';
-  const d = Math.floor(sec / 86400);
-  const h = Math.floor((sec % 86400) / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  if (d > 0) return d + 'д ' + h + 'ч';
-  if (h > 0) return h + 'ч ' + m + 'м';
-  return m + 'м';
+  if (sec == null) return '';
+  const n = Number(sec);
+  if (!isFinite(n) || n < 0 || n > 1e9) return escHtml(String(sec));
+  const d = Math.floor(n / 86400);
+  const h = Math.floor((n % 86400) / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  if (d > 0) return d + 'дн ' + h + 'г';
+  if (h > 0) return h + 'г ' + m + 'хв';
+  return m + 'хв';
 }
 
 function renderSysInfo(info) {
@@ -1238,11 +1249,11 @@ function renderSysInfo(info) {
   if (!info) { el.style.display = 'none'; return; }
   el.style.display = 'flex';
   el.innerHTML = `
-    <div class="sys-tag"><span class="sys-icon">💻</span><span class="sys-val">${info.os || '—'}</span></div>
-    <div class="sys-tag"><span class="sys-icon">⚡</span><span class="sys-val">${info.cpu_model || '—'}</span></div>
-    <div class="sys-tag"><span class="sys-icon">🧮</span><span class="sys-val">${info.cpu_cores || '—'} ядер</span></div>
-    <div class="sys-tag"><span class="sys-icon">🧠</span><span class="sys-val">${info.total_ram ? info.total_ram.toFixed(1) + ' GB' : '—'}</span></div>
-    <div class="sys-tag"><span class="sys-icon">⏱</span><span class="sys-val">Uptime: ${formatUptime(info.uptime)}</span></div>
+    <div class="sys-tag"><span class="sys-icon">💻</span><span class="sys-val">${escHtml(info.os || '—')}</span></div>
+    <div class="sys-tag"><span class="sys-icon">⚡</span><span class="sys-val">${escHtml(info.cpu_model || '—')}</span></div>
+    <div class="sys-tag"><span class="sys-icon">🧮</span><span class="sys-val">${escHtml(String(info.cpu_cores || '—'))} ядер</span></div>
+    <div class="sys-tag"><span class="sys-icon">🧠</span><span class="sys-val">${info.total_ram ? escHtml(info.total_ram.toFixed(1)) + ' GB' : '—'}</span></div>
+    <div class="sys-tag"><span class="sys-icon">⏱</span><span class="sys-val">Час роботи: ${formatUptime(info.uptime)}</span></div>
   `;
 }
 
@@ -1254,7 +1265,7 @@ function renderPorts(ports) {
     const latency = p.open ? `<span class="port-latency">${safeToFixed(p.latency, 1)}ms</span>` : '';
     return `<div class="port-badge ${cls}">
       <span class="port-dot"></span>
-      ${p.name} :${p.port} ${latency}
+      <span>${escHtml(p.name)} :${escHtml(p.port)} ${latency}</span>
     </div>`;
   }).join('');
 }
@@ -1268,7 +1279,7 @@ function renderTemperatures(temps) {
     return `<div class="temp-badge">
       <span>🌡</span>
       <span class="temp-val" style="color:${color}">${safeToFixed(tempVal, 0)}°C</span>
-      <span class="temp-label">${t.label}</span>
+      <span class="temp-label">${escHtml(t.label)}</span>
     </div>`;
   }).join('');
 }
@@ -1278,20 +1289,21 @@ function renderTopProcesses(procs) {
   const body = document.getElementById('procs-body');
   if (!procs || procs.length === 0) { box.style.display = 'none'; return; }
   box.style.display = 'block';
-  body.innerHTML = procs.map(p => `
-    <tr>
-      <td style="color:var(--text-dim)">${p.pid}</td>
-      <td class="proc-name">${p.name}</td>
+  body.innerHTML = procs.map(p => {
+    const pidVal = (p.pid != null && !isNaN(p.pid)) ? Math.trunc(p.pid) : '—';
+    return `<tr>
+      <td style="color:var(--text-dim)">${escHtml(String(pidVal))}</td>
+      <td class="proc-name">${escHtml(p.name)}</td>
       <td class="proc-cpu">${safeToFixed(p.cpu_pct, 1)}%</td>
       <td class="proc-mem">${safeToFixed(p.mem_mb, 0)} MB</td>
       <td style="color:var(--text-muted)">${safeToFixed(p.mem_pct, 1)}%</td>
-      <td><button onclick="killProcess('${activeHost}', ${p.pid}, '${p.name}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--red);font-size:12px">❌ Kill</button></td>
-    </tr>
-  `).join('');
+       <td><button onclick="killProcess('${escHtml(activeHost || '')}', ${pidVal}, '${escHtml(p.name)}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--red);font-size:12px">❌ Завершити</button></td>
+    </tr>`;
+  }).join('');
 }
 
 async function killProcess(host, pid, name) {
-  if (!confirm(`Вы уверены, что хотите завершить процесс ${name} (PID: ${pid}) на хосте ${host}?`)) {
+  if (!confirm(`Ви впевнені, що хочете завершити процес ${name} (PID: ${pid}) на хості ${host}?`)) {
     return;
   }
   try {
@@ -1301,9 +1313,9 @@ async function killProcess(host, pid, name) {
       body: JSON.stringify({ host, pid })
     });
     if (res.ok) {
-      alert(`Команда на завершение процесса ${pid} отправлена`);
+      alert(`Команда на завершення процесу ${pid} відправлена`);
     } else {
-      alert('Ошибка отправки команды');
+      alert('Помилка надсилання команди');
     }
   } catch (err) {
     alert('Ошибка: ' + err);
@@ -1315,14 +1327,15 @@ function renderSidebar() {
   list.innerHTML = '';
   Object.values(allHosts).forEach(h => {
     const isOnline = h.online !== false;
+    const cpuPct = (h.cpu_pct != null && !isNaN(h.cpu_pct)) ? safeToFixed(h.cpu_pct, 0) + '%' : '—';
     const div = document.createElement('div');
     div.className = 'host-item' + (h.host === activeHost ? ' active' : '');
     div.innerHTML = `
       <span class="host-dot ${isOnline ? 'on' : ''}"></span>
-      <span class="host-name">${h.host}</span>
-      <span class="host-cpu">${isOnline ? safeToFixed(h.cpu_pct, 0) + '%' : 'offline'}</span>
+      <span class="host-name">${escHtml(h.host)}</span>
+      <span class="host-cpu">${isOnline ? cpuPct : 'offline'}</span>
     `;
-    div.onclick = () => selectHost(h.host);
+    div.onclick = () => typeof h.host === 'string' && h.host ? selectHost(h.host) : undefined;
     list.appendChild(div);
   });
 }
@@ -1365,19 +1378,31 @@ ws.onclose = () => {
 };
 
 ws.onmessage = e => {
-  const d = JSON.parse(e.data);
-  const t = new Date(d.time).toLocaleTimeString('ru');
-
-  allHosts[d.host] = d;
-  renderSidebar();
-
-  if (d.host !== activeHost) return;
-  updateCards(d);
-
-  if (isLive) {
-    pushLive(cpuChart, t, d.cpu_pct);
-    pushLive(ramChart, t, d.ram_used_pct);
-    pushSpeedLive(netChart, t, d.net_recv_mbps, d.net_sent_mbps);
+  try {
+    const d = JSON.parse(e.data);
+    if (!d || typeof d !== 'object') return;
+    const host = d.host || '';
+    // Merge: если в новом пакете пустые опциональные поля — сохраняем старые из кэша
+    const prev = allHosts[host];
+    if (prev) {
+      if (!d.sys_info || Object.keys(d.sys_info).length === 0)  d.sys_info    = prev.sys_info;
+      if (!d.ports || d.ports.length === 0)                       d.ports       = prev.ports;
+      if (!d.temperatures || d.temperatures.length === 0)         d.temperatures = prev.temperatures;
+      if (!d.top_processes || d.top_processes.length === 0)       d.top_processes = prev.top_processes;
+    }
+    allHosts[host] = d;
+    renderSidebar();
+    if (d.host === activeHost) {
+      updateCards(d);
+      if (isLive) {
+        const t = new Date(d.time).toLocaleTimeString('uk');
+        pushLive(cpuChart, t, d.cpu_pct);
+        pushLive(ramChart, t, d.ram_used_pct);
+        pushSpeedLive(netChart, t, d.net_recv_mbps, d.net_sent_mbps);
+      }
+    }
+  } catch(err) {
+    console.error('WebSocket message parse error:', err);
   }
 };
 

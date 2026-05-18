@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -410,26 +410,26 @@
     </div>
     <div class="sidebar-nav">
       <a href="/">
-        <span class="nav-icon">📊</span> Дашборд
+        <span class="nav-icon">📊</span> Моніторинг
       </a>
       <a href="/rules" class="active">
-        <span class="nav-icon">⚡</span> Правила алертов
+        <span class="nav-icon">⚡</span> Правила сповіщень
       </a>
       <a href="/incidents">
-        <span class="nav-icon">🔔</span> История алертов
+        <span class="nav-icon">🔔</span> Історія сповіщень
       </a>
       <div class="spacer"></div>
       <a href="/logout" class="exit">
-        <span class="nav-icon">🚪</span> Выйти
+        <span class="nav-icon">🚪</span> Вийти
       </a>
     </div>
   </div>
 
   <div class="main">
     <div class="page-header">
-      <h1>⚡ Правила алертов</h1>
+      <h1>⚡ Правила сповіщень</h1>
       <button class="btn-add" onclick="openModal()">
-        <span>+</span> Добавить правило
+        <span>+</span> Додати правило
       </button>
     </div>
 
@@ -438,11 +438,11 @@
         <thead>
           <tr>
             <th>Метрика</th>
-            <th>Порог</th>
+            <th>Поріг</th>
             <th>Замеров подряд</th>
             <th>Хост</th>
-            <th>Включено</th>
-            <th>Действия</th>
+            <th>Увімкнено</th>
+            <th>Дії</th>
           </tr>
         </thead>
         <tbody id="rules-body"></tbody>
@@ -453,7 +453,7 @@
 
 <div class="overlay" id="overlay">
   <div class="modal">
-    <h2 id="modal-title">Добавить правило</h2>
+    <h2 id="modal-title">Додати правило</h2>
     <input type="hidden" id="rule-id">
     <div class="form-row">
       <label>Метрика</label>
@@ -464,11 +464,11 @@
       </select>
     </div>
     <div class="form-row">
-      <label>Порог (%)</label>
+      <label>Поріг (%)</label>
       <input type="number" id="rule-threshold" min="1" max="100" value="80">
     </div>
     <div class="form-row">
-      <label>Замеров подряд выше порога</label>
+      <label>Вимірів поспіль вище порога</label>
       <input type="number" id="rule-count" min="1" max="20" value="3">
     </div>
     <div class="form-row">
@@ -476,8 +476,8 @@
       <input type="text" id="rule-host" value="my-pc">
     </div>
     <div class="modal-btns">
-      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-save" onclick="saveRule()">Сохранить</button>
+      <button class="btn-cancel" onclick="closeModal()">Скасувати</button>
+      <button class="btn-save" onclick="saveRule()">Зберегти</button>
     </div>
   </div>
 </div>
@@ -506,8 +506,8 @@ async function loadRules() {
       </td>
       <td>
         <div class="actions">
-          <button class="btn-edit" onclick='editRule(${JSON.stringify(r)})'>изменить</button>
-          <button class="btn-del"  onclick="deleteRule(${r.id})">удалить</button>
+          <button class="btn-edit" onclick='editRule(${JSON.stringify(r)})'>редагувати</button>
+          <button class="btn-del"  onclick="deleteRule(${r.id})">видалити</button>
         </div>
       </td>
     `;
@@ -516,7 +516,7 @@ async function loadRules() {
 }
 
 function openModal(rule) {
-  document.getElementById('modal-title').textContent = rule ? 'Изменить правило' : 'Добавить правило';
+  document.getElementById('modal-title').textContent = rule ? 'Редагувати правило' : 'Додати правило';
   document.getElementById('rule-id').value        = rule ? rule.id        : '';
   document.getElementById('rule-metric').value    = rule ? rule.metric    : 'cpu';
   document.getElementById('rule-threshold').value = rule ? rule.threshold : 80;
@@ -552,7 +552,7 @@ async function saveRule() {
 }
 
 async function deleteRule(id) {
-  if (!confirm('Удалить правило?')) return;
+  if (!confirm('Видалити правило?')) return;
   await fetch('/api/rules/', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },

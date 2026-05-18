@@ -286,19 +286,19 @@ func main() {
 		MaxAge:   24 * time.Hour,
 	})
 
-	_, err = js.Subscribe("metrics.>", func(msg *nats.Msg) {
-		var e models.MetricEvent
-		if err := json.Unmarshal(msg.Data, &e); err != nil {
-			slog.Error("ошибка парсинга метрики", "err", err)
+		_, err = js.Subscribe("metrics.>", func(msg *nats.Msg) {
+			var e models.MetricEvent
+			if err := json.Unmarshal(msg.Data, &e); err != nil {
+				slog.Error("ошибка парсинга метрики", "err", err)
+				msg.Ack()
+				return
+			}
+			store.SetWithMerge(e)
+			updatePrometheusMetrics()
+			data, _ := json.Marshal(e)
+			clients.broadcast(data)
 			msg.Ack()
-			return
-		}
-		store.Set(e)
-		updatePrometheusMetrics()
-		data, _ := json.Marshal(e)
-		clients.broadcast(data)
-		msg.Ack()
-	}, nats.Durable("dashboard"), nats.DeliverNew())
+		}, nats.Durable("dashboard"), nats.DeliverNew())
 	if err != nil {
 		// Если consumer уже существует с другим конфигом — удаляем и создаём заново
 		if strings.Contains(err.Error(), "consumer name already in use") || strings.Contains(err.Error(), "already exists") {
@@ -311,7 +311,7 @@ func main() {
 					msg.Ack()
 					return
 				}
-				store.Set(e)
+				store.SetWithMerge(e)
 				updatePrometheusMetrics()
 				data, _ := json.Marshal(e)
 				clients.broadcast(data)
@@ -345,7 +345,7 @@ func main() {
 		if username != dashUser || password != dashPass {
 			slog.Warn("неудачная попытка входа", "username", username, "ip", r.RemoteAddr)
 			w.WriteHeader(http.StatusUnauthorized)
-			loginTmpl.Execute(w, map[string]string{"Error": "Неверный логин или пароль"})
+			loginTmpl.Execute(w, map[string]string{"Error": "Невірний логін або пароль"})
 			return
 		}
 		token := makeSessionToken(username, sessionSecret)
@@ -459,7 +459,7 @@ func main() {
 
 	http.HandleFunc("/api/kill", auth(sessionSecret, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", 405)
+			http.Error(w, "метод не підтримується", 405)
 			return
 		}
 		var req KillRequest
@@ -511,7 +511,7 @@ func main() {
 			json.NewEncoder(w).Encode(rule)
 			return
 		}
-		http.Error(w, "method not allowed", 405)
+		http.Error(w, "метод не підтримується", 405)
 	}))
 
 	http.HandleFunc("/api/rules/", auth(sessionSecret, func(w http.ResponseWriter, r *http.Request) {
@@ -546,7 +546,7 @@ func main() {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		http.Error(w, "method not allowed", 405)
+		http.Error(w, "метод не підтримується", 405)
 	}))
 
 	// WebSocket
@@ -575,7 +575,7 @@ func main() {
 		data, err := templateFS.ReadFile("templates/incidents.html")
 		if err != nil {
 			slog.Error("ошибка чтения шаблона incidents", "err", err)
-			http.Error(w, "не могу прочитать шаблон", 500)
+			http.Error(w, "не можу прочитати шаблон", 500)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -586,7 +586,7 @@ func main() {
 		data, err := templateFS.ReadFile("templates/rules.html")
 		if err != nil {
 			slog.Error("ошибка чтения шаблона rules", "err", err)
-			http.Error(w, "не могу прочитать шаблон", 500)
+			http.Error(w, "не можу прочитати шаблон", 500)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -597,7 +597,7 @@ func main() {
 		data, err := templateFS.ReadFile("templates/index.html")
 		if err != nil {
 			slog.Error("ошибка чтения шаблона index", "err", err)
-			http.Error(w, "не могу прочитать шаблон", 500)
+			http.Error(w, "не можу прочитати шаблон", 500)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
