@@ -205,14 +205,12 @@ ts TIMESTAMPTZ NOT NULL,
 cpu_pct REAL NOT NULL,
 ram_pct REAL NOT NULL,
 ram_free REAL NOT NULL,
-net_sent REAL NOT NULL,
-net_recv REAL NOT NULL,
+net_sent_mbps REAL NOT NULL DEFAULT 0,
+net_recv_mbps REAL NOT NULL DEFAULT 0,
 disk_pct REAL NOT NULL,
 disk_free REAL NOT NULL,
-net_sent_mbps REAL DEFAULT 0,
-net_recv_mbps REAL DEFAULT 0,
-disk_read_mbps REAL DEFAULT 0,
-disk_write_mbps REAL DEFAULT 0
+disk_read_mbps REAL NOT NULL DEFAULT 0,
+disk_write_mbps REAL NOT NULL DEFAULT 0
 ```
 
 **rules** — правила алертингу

@@ -62,8 +62,6 @@ func New(ctx context.Context, path string) (Storage, error) {
 			cpu_pct REAL,
 			ram_pct REAL,
 			ram_free REAL,
-			net_sent REAL,
-			net_recv REAL,
 			disk_pct REAL,
 			disk_free REAL,
 			net_sent_mbps REAL DEFAULT 0,
@@ -90,9 +88,9 @@ func (db *DB) Close() error {
 
 func (db *DB) Save(ctx context.Context, e models.MetricEvent) error {
 	_, err := db.conn.ExecContext(ctx, `
-		INSERT INTO metrics (host, ts, cpu_pct, ram_pct, ram_free, net_sent, net_recv, disk_pct, disk_free, net_sent_mbps, net_recv_mbps, disk_read_mbps, disk_write_mbps)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		e.Host, e.Time, e.CPU, e.RAMUsed, e.RAMFreeGB, e.NetSentMBps, e.NetRecvMBps, e.DiskUsed, e.DiskFreeGB, e.NetSentMBps, e.NetRecvMBps, e.DiskReadMBps, e.DiskWriteMBps)
+		INSERT INTO metrics (host, ts, cpu_pct, ram_pct, ram_free, net_sent_mbps, net_recv_mbps, disk_pct, disk_free, disk_read_mbps, disk_write_mbps)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		e.Host, e.Time, e.CPU, e.RAMUsed, e.RAMFreeGB, e.NetSentMBps, e.NetRecvMBps, e.DiskUsed, e.DiskFreeGB, e.DiskReadMBps, e.DiskWriteMBps)
 	return err
 }
 
@@ -168,7 +166,7 @@ func (db *DB) DeleteRule(ctx context.Context, id int64) error {
 
 func (db *DB) GetMetricsHistory(ctx context.Context, host string, hours int) ([]models.MetricEvent, error) {
 	since := time.Now().Add(-time.Duration(hours) * time.Hour)
-	rows, err := db.conn.QueryContext(ctx, "SELECT ts, cpu_pct, ram_pct, disk_pct FROM metrics WHERE host=? AND ts > ? ORDER BY ts ASC", host, since)
+	rows, err := db.conn.QueryContext(ctx, "SELECT ts, cpu_pct, ram_pct, net_sent_mbps, net_recv_mbps, disk_read_mbps, disk_write_mbps FROM metrics WHERE host=? AND ts > ? ORDER BY ts ASC", host, since)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +174,7 @@ func (db *DB) GetMetricsHistory(ctx context.Context, host string, hours int) ([]
 	var history []models.MetricEvent
 	for rows.Next() {
 		var e models.MetricEvent
-		rows.Scan(&e.Time, &e.CPU, &e.RAMUsed, &e.DiskUsed)
+		rows.Scan(&e.Time, &e.CPU, &e.RAMUsed, &e.NetSentMBps, &e.NetRecvMBps, &e.DiskReadMBps, &e.DiskWriteMBps)
 		e.Host = host
 		history = append(history, e)
 	}

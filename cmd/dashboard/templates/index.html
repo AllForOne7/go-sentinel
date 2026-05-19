@@ -1176,7 +1176,7 @@ async function loadNetHistory(hours, btn) {
   const points = await res.json();
   if (!points || points.length === 0) return;
   const labels = points.map(p => p.time);
-  setSpeedChartData(netChart, labels, points.map(p => p.net_recv), points.map(p => p.net_sent));
+   setSpeedChartData(netChart, labels, points.map(p => p.net_recv_mbps), points.map(p => p.net_sent_mbps));
 }
 
 async function loadSpeedtest(hours) {

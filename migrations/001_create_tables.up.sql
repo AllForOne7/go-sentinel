@@ -7,8 +7,6 @@ CREATE TABLE metrics (
     cpu_pct REAL NOT NULL,
     ram_pct REAL NOT NULL,
     ram_free REAL NOT NULL,
-    net_sent REAL NOT NULL,
-    net_recv REAL NOT NULL,
     disk_pct REAL NOT NULL,
     disk_free REAL NOT NULL,
     net_sent_mbps REAL NOT NULL DEFAULT 0,

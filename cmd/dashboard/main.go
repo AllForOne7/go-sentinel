@@ -141,8 +141,8 @@ type HistoryPoint struct {
 	Time      string  `json:"time"`
 	CPU       float64 `json:"cpu"`
 	RAM       float64 `json:"ram"`
-	NetSent   float64 `json:"net_sent"`
-	NetRecv   float64 `json:"net_recv"`
+	NetSentMBps float64 `json:"net_sent_mbps"`
+	NetRecvMBps float64 `json:"net_recv_mbps"`
 	DiskRead  float64 `json:"disk_read"`
 	DiskWrite float64 `json:"disk_write"`
 }
@@ -407,8 +407,8 @@ func main() {
 				Time:      ev.Time.Format("15:04:05"),
 				CPU:       ev.CPU,
 				RAM:       ev.RAMUsed,
-				NetSent:   ev.NetSentMBps,
-				NetRecv:   ev.NetRecvMBps,
+				NetSentMBps: ev.NetSentMBps,
+				NetRecvMBps: ev.NetRecvMBps,
 				DiskRead:  ev.DiskReadMBps,
 				DiskWrite: ev.DiskWriteMBps,
 			})

@@ -45,13 +45,11 @@ func (db *postgresDB) Save(ctx context.Context, e models.MetricEvent) error {
 	_, err := db.pool.Exec(ctx, `
 		INSERT INTO metrics
 			(host, ts, cpu_pct, ram_pct, ram_free,
-			 net_sent, net_recv, disk_pct, disk_free,
 			 net_sent_mbps, net_recv_mbps,
 			 disk_read_mbps, disk_write_mbps)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`,
 		e.Host, e.Time, e.CPU, e.RAMUsed, e.RAMFreeGB,
-		e.NetSentMBps, e.NetRecvMBps, e.DiskUsed, e.DiskFreeGB,
 		e.NetSentMBps, e.NetRecvMBps,
 		e.DiskReadMBps, e.DiskWriteMBps,
 	)
@@ -63,7 +61,6 @@ func (db *postgresDB) GetMetricsHistory(ctx context.Context, host string, hours 
 	since := time.Now().Add(-time.Duration(hours) * time.Hour)
 	rows, err := db.pool.Query(ctx, `
 		SELECT ts, cpu_pct, ram_pct, ram_free,
-		       net_sent, net_recv, disk_pct, disk_free,
 		       net_sent_mbps, net_recv_mbps,
 		       disk_read_mbps, disk_write_mbps
 		FROM metrics
@@ -81,7 +78,6 @@ func (db *postgresDB) GetMetricsHistory(ctx context.Context, host string, hours 
 		var e models.MetricEvent
 		var ts time.Time
 		if err := rows.Scan(&ts, &e.CPU, &e.RAMUsed, &e.RAMFreeGB,
-			&e.NetSentMBps, &e.NetRecvMBps, &e.DiskUsed, &e.DiskFreeGB,
 			&e.NetSentMBps, &e.NetRecvMBps,
 			&e.DiskReadMBps, &e.DiskWriteMBps); err != nil {
 			return nil, err

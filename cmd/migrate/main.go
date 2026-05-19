@@ -101,7 +101,6 @@ func migrateMetrics(ctx context.Context, sqliteDB *sql.DB, pgPool *pgxpool.Pool)
 
 	rows, err := sqliteDB.QueryContext(ctx, `
 		SELECT host, ts, cpu_pct, ram_pct, ram_free,
-		       net_sent, net_recv, disk_pct, disk_free,
 		       net_sent_mbps, net_recv_mbps,
 		       disk_read_mbps, disk_write_mbps
 		FROM metrics
@@ -116,19 +115,19 @@ func migrateMetrics(ctx context.Context, sqliteDB *sql.DB, pgPool *pgxpool.Pool)
 	var data [][]any
 	var host string
 	var ts time.Time
-	var cpuPct, ramPct, ramFree, netSent, netRecv, diskPct, diskFree float64
+	var cpuPct, ramPct, ramFree float64
 	var netSentMbps, netRecvMbps, diskReadMbps, diskWriteMbps float64
 
 	for rows.Next() {
 		if err := rows.Scan(&host, &ts, &cpuPct, &ramPct, &ramFree,
-			&netSent, &netRecv, &diskPct, &diskFree,
-			&netSentMbps, &netRecvMbps, &diskReadMbps, &diskWriteMbps); err != nil {
+			&netSentMbps, &netRecvMbps,
+			&diskReadMbps, &diskWriteMbps); err != nil {
 			return err
 		}
 		data = append(data, []any{
 			host, ts, cpuPct, ramPct, ramFree,
-			netSent, netRecv, diskPct, diskFree,
-			netSentMbps, netRecvMbps, diskReadMbps, diskWriteMbps,
+			netSentMbps, netRecvMbps,
+			diskReadMbps, diskWriteMbps,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -143,7 +142,6 @@ func migrateMetrics(ctx context.Context, sqliteDB *sql.DB, pgPool *pgxpool.Pool)
 		pgx.Identifier{"metrics"},
 		[]string{
 			"host", "ts", "cpu_pct", "ram_pct", "ram_free",
-			"net_sent", "net_recv", "disk_pct", "disk_free",
 			"net_sent_mbps", "net_recv_mbps",
 			"disk_read_mbps", "disk_write_mbps",
 		},
